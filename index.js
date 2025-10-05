@@ -12,7 +12,15 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://Foxgee212.github.io",   // your GitHub Pages URL
+    "http://localhost:5173"             // for local Vite testing
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(path.resolve(), "uploads")));
