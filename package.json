@@ -2,14 +2,20 @@
   "name": "house-rent-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
+  "description": "House rental backend API for landlords and tenants.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "cross-env NODE_ENV=production node index.js",
+    "dev": "cross-env NODE_ENV=development nodemon index.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "express",
+    "mongodb",
+    "house-rent",
+    "api",
+    "backend"
+  ],
+  "author": "Ibrahim Abdullahi",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.12.2",
@@ -24,6 +30,10 @@
     "multer-storage-cloudinary": "^4.0.0"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }

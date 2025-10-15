@@ -1,28 +1,51 @@
 import jwt from "jsonwebtoken";
+import User from "../models/User.js"; // ✅ add ".js" extension if using ES modules
 
-const auth = (req, res, next) => {
+/**
+ * Authentication middleware
+ * Verifies JWT token and attaches user info to req.user
+ */
+const auth = async (req, res, next) => {
   try {
+    // ✅ Get token from header
     const authHeader = req.header("Authorization");
     if (!authHeader) {
-      return res.status(401).json({ msg: "No token, authorization denied" });
+      return res
+        .status(401)
+        .json({ success: false, msg: "Authorization header missing" });
     }
 
-    const token = authHeader.replace("Bearer ", "").trim();
+    // ✅ Extract Bearer token
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : authHeader;
+
     if (!token) {
-      return res.status(401).json({ msg: "No token, authorization denied" });
+      return res
+        .status(401)
+        .json({ success: false, msg: "No token provided" });
     }
 
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    // ✅ Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ attach decoded payload to request
-    req.user = {
-      id: verified.id,
-      role: verified.role,
-    };
+    // ✅ Fetch user details from DB (optional but recommended)
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, msg: "User not found or deleted" });
+    }
+
+    // ✅ Attach user info to request object
+    req.user = user;
 
     next();
   } catch (err) {
-    res.status(401).json({ msg: "Invalid token" });
+    console.error("❌ JWT verification failed:", err.message);
+    return res
+      .status(401)
+      .json({ success: false, msg: "Invalid or expired token" });
   }
 };
 

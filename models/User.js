@@ -18,9 +18,25 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ["landlord", "tenant"],
         default: "tenant",
-    }
-},
-{timestamps: true});
+    },
+    location: {
+        type: String,
+        default: "",
+    },
+    bio: {
+        type: String,
+        default: "",
+    },
+    phone: {
+        type: String,
+        default: "",
+
+    },
+    profilePic: {
+        type: String,
+        default: "",
+    },
+}, { timestamps: true });
 
 
 const User = mongoose.model("User", userSchema);
