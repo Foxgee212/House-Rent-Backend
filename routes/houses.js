@@ -3,7 +3,7 @@ import express from "express";
 import House from "../models/House.js";
 import auth from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
-
+import { updateAvailability } from "../controllers/houseController.js";
 const router = express.Router();
 
 /**
@@ -145,5 +145,7 @@ router.delete("/:id", auth, async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
+
+router.patch("/:id/availability", auth, updateAvailability)
 
 export default router;

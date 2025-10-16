@@ -29,3 +29,34 @@ export const getHouseById = async (req, res) => {
     if(!house) return res.status(404).json({ message: "House not found"});
     res.json(house);
 };
+
+// Upadate house Availabilty 
+
+export const updateAvailability = async (req, res)=>{
+    const { id } = req.params;
+    const { available } = req.body;
+
+
+    try {
+        const house = await House.findById(id);
+        if(!house) return res.status(404).json({ message: "House not found"});
+
+        //optional: Ensure only landlord can update
+
+        if(house.landlord.toString() !== req.user.id){
+            return res.status(403).json({ message: "Unauthorized"});
+
+        }
+
+        house.available = available;
+
+        await house.save();
+
+        res.status(200).json({
+            message: `House marked as ${available ? "available": "Occupied"}`,
+            house,
+        });
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
+}

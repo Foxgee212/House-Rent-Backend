@@ -25,6 +25,10 @@ const houseSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  available: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
 const House = mongoose.model("House", houseSchema);
