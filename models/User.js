@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ["landlord", "tenant"],
+        enum: ["landlord", "tenant", "admin"],
         default: "tenant",
     },
     location: {

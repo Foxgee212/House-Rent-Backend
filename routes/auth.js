@@ -16,7 +16,6 @@ const allowedRoles = ["tenant", "landlord"];
  */
 router.post("/register", async (req, res) => {
   try {
-    console.log("📩 Received register request:", req.body);
 
     const { name, email, password, role, location = "", bio = "", phone = "" } = req.body;
 
@@ -25,7 +24,7 @@ router.post("/register", async (req, res) => {
     }
 
     // ✅ Validate role
-    const allowedRoles = ["tenant", "landlord"];
+    const allowedRoles = ["tenant", "landlord", "admin"];
     if (role && !allowedRoles.includes(role)) {
       return res.status(400).json({ msg: "Invalid role" });
     }
@@ -89,13 +88,13 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
-      return res.status(400).json({ msg: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required" });
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "User does not exist" });
+    if (!user) return res.status(400).json({ message: "User does not exist" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

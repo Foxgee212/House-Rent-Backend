@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import adminRoutes from "./routes/admin.js"
 
 import authRoutes from "./routes/auth.js";
 import houseRoutes from "./routes/houses.js";
@@ -41,6 +42,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/houses", houseRoutes);
 app.use("/api/profile", profileRoutes); // Dynamic import for ES module
+app.use("/api/admin", adminRoutes)
 
 // ===== Database Connection =====
 mongoose
