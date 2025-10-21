@@ -1,45 +1,52 @@
 import express from "express";
 import auth from "../middleware/auth.js";
-import User from "../models/User.js";
-import House from "../models/House.js";
 import { verifyAdmin } from "../middleware/verifyAdmin.js";
 import {
   getAllUsers,
   deleteUser,
   getAllHouses,
   approveHouse,
-  deleteHouse
+  deleteHouse,
+  getDashboardStats,  // ✅ Use the controller version instead of inline code
+  getPendingHouses,
+  ApprovedHouses,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
 
-router.get("/users", auth, verifyAdmin, getAllUsers);
-router.delete("/users/:id", auth, verifyAdmin, deleteUser);
+/* ==============================
+   ✅ ADMIN DASHBOARD ROUTES
+   ============================== */
 
+// 📊 Dashboard stats
+router.get("/stats", auth, verifyAdmin, getDashboardStats);
+
+/* ==============================
+   🏠 HOUSE MANAGEMENT ROUTES
+   ============================== */
+
+// 🏘️ Get all houses
 router.get("/houses", auth, verifyAdmin, getAllHouses);
+
+// ✅ Approve a house
 router.patch("/houses/:id/approve", auth, verifyAdmin, approveHouse);
+
+// 🗑️ Delete a house
 router.delete("/houses/:id", auth, verifyAdmin, deleteHouse);
 
-// ✅ Admin dashboard stats
-router.get("/stats", auth, async (req, res) => {
-  try {
-    if(req.user.role !== "admin")
-        return res.status(403).json({ message: "Access denied"})
-    const totalHouses = await House.countDocuments();
-    const approved = await House.countDocuments({ status: "approved" });
-    const pending = await House.countDocuments({ status: "pending" });
-    const totalUsers = await User.countDocuments();
+/* ==============================
+   👥 USER MANAGEMENT ROUTES
+   ============================== */
 
-    res.json({
-      totalHouses,
-      approved,
-      pending,
-      totalUsers,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error fetching stats" });
-  }
-});
+// 👨‍💻 Get all users
+router.get("/users", auth, verifyAdmin, getAllUsers);
 
+// ❌ Delete a user
+router.delete("/users/:id", auth, verifyAdmin, deleteUser);
+
+// Pending users
+router.get("/pending", auth, verifyAdmin, getPendingHouses )
+
+//approved houses
+router.get("/approved", auth, verifyAdmin, ApprovedHouses)
 export default router;

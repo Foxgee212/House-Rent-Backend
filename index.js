@@ -4,8 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import adminRoutes from "./routes/admin.js"
 
+import adminRoutes from "./routes/admin.js"
 import authRoutes from "./routes/auth.js";
 import houseRoutes from "./routes/houses.js";
 import profileRoutes from "./routes/profile.js";

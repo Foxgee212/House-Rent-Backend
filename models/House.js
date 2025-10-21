@@ -29,6 +29,18 @@ const houseSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending", 
+  },
+  deleted: {
+    type: Boolean,
+    default: false
+
+  }
+
+
 }, { timestamps: true });
 
 const House = mongoose.model("House", houseSchema);
