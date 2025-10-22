@@ -26,7 +26,7 @@ app.use(express.json());
 // ✅ Dynamic CORS (works locally & when deployed)
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_URL || "http://localhost:5173" ||"https://house-rent-frontend-beta.vercel.app",
     credentials: true,
   })
 );
