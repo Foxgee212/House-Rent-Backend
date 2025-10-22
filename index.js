@@ -5,31 +5,39 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import adminRoutes from "./routes/admin.js"
+// Import routes
+import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
 import houseRoutes from "./routes/houses.js";
 import profileRoutes from "./routes/profile.js";
 
 // Load environment variables
-
 dotenv.config();
 
-const app = express();
-
-// Fix __dirname / __filename in ES modules
+// Fix __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const app = express();
 
 // ===== Middleware =====
 app.use(express.json());
 
-// ✅ Dynamic CORS (works locally & when deployed)
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173" ||"https://house-rent-frontend-beta.vercel.app",
-    credentials: true,
-  })
-);
+// ✅ CORS setup for both local dev and deployed frontend
+const allowedOrigins = [
+  "http://localhost:5173", // local frontend
+  "https://house-rent-frontend-beta.vercel.app" // live frontend
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  }
+}));
 
 // ✅ Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -39,14 +47,14 @@ app.get("/", (req, res) => {
   res.send("🏡 House Rent API is running...");
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/houses", houseRoutes);
-app.use("/api/profile", profileRoutes); // Dynamic import for ES module
-app.use("/api/admin", adminRoutes)
+app.use("/auth", authRoutes);
+app.use("/houses", houseRoutes);
+app.use("/profile", profileRoutes);
+app.use("/admin", adminRoutes);
 
 // ===== Database Connection =====
 mongoose
-  .connect(process.env.MONGO_URL)
+  .connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => console.error("❌ MongoDB connection error:", err.message));
 
