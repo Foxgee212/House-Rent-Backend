@@ -3,21 +3,32 @@ import House from "../models/House.js";
 
 // Create a new house (Landlord only)
 export const createHouse = async (req, res) => {
-  const { title, location, price, description, image } = req.body;
+  const { title, location, price, description, negotiable } = req.body;
 
   if (!title || !location || !price || !description) {
     return res.status(400).json({ success: false, msg: "All fields are required" });
   }
 
   try {
+    const imageUrls = req.files?.map((file) => file.path) || [];
+
+    if (!imageUrls.length) {
+      return res.status(400).json({ success: false, msg: "At least one image is required" });
+    }
+
+    // ✅ Convert negotiable value properly
+    const parsedNegotiable =
+      negotiable === "true" || negotiable === true ? true : false;
+
     const newHouse = await House.create({
       title,
       location,
       price,
       description,
-      image: req.file?.path || image || null, // support file upload
+      images: imageUrls,
       landlord: req.user.id,
-      status: "pending"
+      negotiable: parsedNegotiable, // ✅ Save correct boolean
+      status: "pending",
     });
 
     res.status(201).json({
@@ -46,7 +57,8 @@ export const getHouses = async (req, res) => {
 export const getHouseById = async (req, res) => {
   try {
     const house = await House.findById(req.params.id).populate("landlord", "name email");
-    if (!house) return res.status(404).json({ success: false, msg: "House not found" });
+    if (!house)
+      return res.status(404).json({ success: false, msg: "House not found" });
     res.status(200).json({ success: true, house });
   } catch (err) {
     console.error("Get house by ID error:", err);
@@ -61,7 +73,8 @@ export const updateAvailability = async (req, res) => {
 
   try {
     const house = await House.findById(id);
-    if (!house) return res.status(404).json({ success: false, msg: "House not found" });
+    if (!house)
+      return res.status(404).json({ success: false, msg: "House not found" });
 
     // Ensure only landlord can update
     if (house.landlord.toString() !== req.user.id) {

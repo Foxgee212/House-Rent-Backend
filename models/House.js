@@ -16,8 +16,8 @@ const houseSchema = new mongoose.Schema({
   description: {
     type: String,
   },
-  image: {
-    type: String, // Cloudinary or upload URL
+  images: {
+    type: [String], // Cloudinary or upload URL
     required: true,
   },
   landlord: {
@@ -28,6 +28,10 @@ const houseSchema = new mongoose.Schema({
   available: {
     type: Boolean,
     default: true,
+  },
+  negotiable: {
+    type: Boolean,
+    default: false,
   },
   status: {
     type: String,

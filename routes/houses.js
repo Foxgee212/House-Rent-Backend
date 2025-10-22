@@ -9,6 +9,7 @@ import {
   updateAvailability,
 } from "../controllers/houseController.js";
 import House from "../models/House.js";
+import { deleteHouse } from "../controllers/adminController.js"
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ const router = express.Router();
 // @route   POST /api/houses
 // @desc    Add new house (Landlord only)
 // @access  Private
-router.post("/", auth, upload.single("image"), createHouse);
+router.post("/", auth, upload.array("images", 5), createHouse);
 
 // @route   GET /api/houses
 // @desc    Get all houses (Public)
@@ -64,5 +65,14 @@ router.get("/:id", getHouseById);
 // @desc    Update house availability (Landlord only)
 // @access  Private
 router.patch("/:id/availability", auth, updateAvailability);
+
+//@route Delete/api/houses/:id
+//@desc  Delete houses from the landlord dashboard
+//@access landlord
+
+router.delete("/:id", auth, deleteHouse)
+
+
+
 
 export default router;
