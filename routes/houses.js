@@ -32,7 +32,7 @@ router.get("/approved", async (req, res) => {
   try {
     const houses = await House.find({ status: "approved" }).populate(
       "landlord",
-      "name email"
+      "name email phone profilePic"
     );
     res.status(200).json({ success: true, houses });
   } catch (err) {

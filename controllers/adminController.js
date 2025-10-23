@@ -42,7 +42,7 @@ export const deleteUser = async (req, res) => {
 export const getAllHouses = async (req, res) => {
   try {
     const houses = await House.find()
-      .populate("landlord", "name email")
+      .populate("landlord", "name email phone profilePic")
       .sort({ createdAt: -1});
     return res.status(200).json(houses);
   } catch (error) {
@@ -72,7 +72,7 @@ export const getPendingHouses = async (req, res) => {
 // Approved Houses 
 export const ApprovedHouses = async (req, res) => {
   try {
-    const approved = await House.find({ status: "approved"}).populate( "landlord", "name email");
+    const approved = await House.find({ status: "approved"}).populate( "landlord", "name email phone profilePic");
     return res.status(200).json(approved)
 
   } catch (error) {
