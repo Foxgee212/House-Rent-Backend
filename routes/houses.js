@@ -1,6 +1,7 @@
 // routes/houses.js
 import express from "express";
 import auth from "../middleware/auth.js";
+import ensureVerified from "../middleware/ensureVerified.js"; // ✅ import the middleware
 import upload from "../middleware/upload.js";
 import {
   createHouse,
@@ -9,16 +10,16 @@ import {
   updateAvailability,
 } from "../controllers/houseController.js";
 import House from "../models/House.js";
-import { deleteHouse } from "../controllers/adminController.js"
+import { deleteHouse } from "../controllers/adminController.js";
 
 const router = express.Router();
 
 // -------------------- Routes --------------------
 
 // @route   POST /api/houses
-// @desc    Add new house (Landlord only)
+// @desc    Add new house (Landlord only, verified)
 // @access  Private
-router.post("/", auth, upload.array("images", 5), createHouse);
+router.post("/", auth, ensureVerified, upload.array("images", 5), createHouse);
 
 // @route   GET /api/houses
 // @desc    Get all houses (Public)
@@ -44,7 +45,7 @@ router.get("/approved", async (req, res) => {
 // @route   GET /api/houses/my
 // @desc    Get houses of logged-in landlord
 // @access  Private
-router.get("/my", auth, async (req, res) => {
+router.get("/my", auth, ensureVerified, async (req, res) => {
   try {
     const houses = await House.find({ landlord: req.user.id }).sort({
       createdAt: -1,
@@ -62,17 +63,13 @@ router.get("/my", auth, async (req, res) => {
 router.get("/:id", getHouseById);
 
 // @route   PATCH /api/houses/:id/availability
-// @desc    Update house availability (Landlord only)
+// @desc    Update house availability (Landlord only, verified)
 // @access  Private
-router.patch("/:id/availability", auth, updateAvailability);
+router.patch("/:id/availability", auth, ensureVerified, updateAvailability);
 
-//@route Delete/api/houses/:id
-//@desc  Delete houses from the landlord dashboard
-//@access landlord
-
-router.delete("/:id", auth, deleteHouse)
-
-
-
+// @route   DELETE /api/houses/:id
+// @desc    Delete houses from the landlord dashboard (Landlord only, verified)
+// @access  Private
+router.delete("/:id", auth, ensureVerified, deleteHouse);
 
 export default router;

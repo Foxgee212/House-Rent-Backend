@@ -175,3 +175,35 @@ export const getDashboardStats = async (req, res) => {
       .json({ message: "Server error fetching stats" });
   }
 };
+
+export const getPendingVerification = async (req, res) =>{
+  try {
+    const users = await User.find( { "verificationData": { $ne: null}, verified: false});
+    res.json(users)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ msg: "Unable to get the houses"})
+  }
+}
+
+export const approveVerification  = async (req, res) =>{
+  try {
+    const  { id } = req.params;
+    await User.findByIdAndUpdate( id, { verified: true});
+    res.json({ msg: "landlord verified successfully"});
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ msg: "Unable to verify landlord"})
+  }
+}
+
+export const rejectVerification  = async (req, res) =>{
+  try {
+    const  { id } = req.params;
+    await User.findByIdAndUpdate( id, { verified: false, verificationData: null,});
+    res.json({ msg: "rejected verification"});
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ msg: "Unable to verify landlord"})
+  }
+}
