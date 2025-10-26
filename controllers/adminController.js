@@ -153,28 +153,42 @@ export const deleteHouse = async (req, res) => {
    ============================== */
 export const getDashboardStats = async (req, res) => {
   try {
-    const [totalUsers, totalHouses, pendingHouses, approvedHouses] =
-      await Promise.all([
-        User.countDocuments(),
-        House.countDocuments(),
-        House.countDocuments({ status: "pending"}),
-        House.countDocuments({ status: "approved" }),
-      ]);
+    const [
+      totalUsers,
+      totalHouses,
+      pendingHouses,
+      approvedHouses,
+      totalVerifications,
+      pendingVerifications,
+      verifiedUsers,
+    ] = await Promise.all([
+      // Users
+      User.countDocuments(),
+      // Houses
+      House.countDocuments(),
+      House.countDocuments({ status: "pending" }),
+      House.countDocuments({ status: "approved" }),
+      // Verifications
+      User.countDocuments({ "verification.status": { $exists: true } }),
+      User.countDocuments({ "verification.status": "pending" }),
+      User.countDocuments({ "verification.status": "verified" }),
+    ]);
 
     return res.status(200).json({
       totalUsers,
       totalHouses,
       pendingHouses,
       approvedHouses,
+      totalVerifications,
+      pendingVerifications,
+      verifiedUsers,
     });
-    console.log(await House.find({}, "status deleted"));
   } catch (error) {
     console.error("❌ Error fetching stats:", error);
-    return res
-      .status(500)
-      .json({ message: "Server error fetching stats" });
+    return res.status(500).json({ message: "Server error fetching stats" });
   }
 };
+
 
 export const getPendingVerification = async (req, res) =>{
   try {

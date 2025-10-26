@@ -8,6 +8,7 @@ import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
+import { loadFaceModels } from "./utils/loadFaceModels.js";
 
 // ===== Route Imports =====
 import adminRoutes from "./routes/admin.js";
@@ -15,6 +16,7 @@ import authRoutes from "./routes/auth.js";
 import houseRoutes from "./routes/houses.js";
 import profileRoutes from "./routes/profile.js";
 import verificationRoutes from "./routes/verification.js";
+import adminVerificationRoutes from "./routes/adminVerification.js"
 
 dotenv.config();
 
@@ -74,12 +76,19 @@ app.get("/", (req, res) => {
   });
 });
 
+loadFaceModels().catch(err => {
+  console.error("⚠️ Face model load failed:", err.message);
+  process.exit(1);
+});
+
 // ===== Main Routes =====
 app.use("/auth", authRoutes);
 app.use("/houses", houseRoutes);
 app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
 app.use("/verification", verificationRoutes);
+app.use("/admin", adminVerificationRoutes);
+
 
 // ===== Global Error Handler =====
 app.use((err, req, res, next) => {
