@@ -111,15 +111,12 @@ const userSchema = new mongoose.Schema(
     // Optional unique face embedding hash (for deduplication)
     faceHash: { type: String, index: true },
 
-    // OTP for login / password reset
-    otp: {
-      code: { type: String, default: "" },
-      expiresAt: { type: Date, default: null },
-      purpose: { type: String, enum: ["login", "reset"], default: "login" }, // distinguishes OTP type
-    },
-
+    // ===============================
+    // Password Reset OTP Fields 🔐
+    // ===============================
+    resetPasswordOTP: { type: String },
+    resetPasswordExpires: { type: Date },
   },
-  
   { timestamps: true }
 );
 
@@ -131,7 +128,7 @@ userSchema.index({ "verification.status": 1 });
 userSchema.index({ faceHash: 1 });
 
 // ===============================
-// Virtuals & Utilities (Optional Enhancements)
+// Virtuals & Utilities
 // ===============================
 
 // Reset daily verification attempts
