@@ -1,77 +1,32 @@
-// routes/auth.js
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { generateOTP, sendOTP } from "../utils/otp.js";
 
 const router = express.Router();
 
-// Allowed roles
-const allowedRoles = ["tenant", "landlord"];
-
-/**
- * @route   POST /api/auth/register
- * @desc    Register a new user
- * @access  Public
- */
+// ===============================
+// REGISTER USER
+// ===============================
 router.post("/register", async (req, res) => {
   try {
-
     const { name, email, password, role, location = "", bio = "", phone = "" } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ msg: "Name, email, and password are required" });
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ msg: "Name, email, and password are required" });
-    }
-
-    // ✅ Validate role
-    const allowedRoles = ["tenant", "landlord", "admin"];
-    if (role && !allowedRoles.includes(role)) {
-      return res.status(400).json({ msg: "Invalid role" });
-    }
-
-    // ✅ Check for existing user
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ msg: "User already exists" });
-    }
+    if (existingUser) return res.status(400).json({ msg: "User already exists" });
 
-    // ✅ Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // ✅ Create new user with all fields
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      role: role || "tenant",
-      location: location || "",
-      bio: bio || "",
-      phone: phone || "",
-    });
-
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashedPassword, role: role || "tenant", location, bio, phone });
     await newUser.save();
 
-    // ✅ Generate token
-    const token = jwt.sign(
-      { id: newUser._id, role: newUser.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    // ✅ Send response
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        location: newUser.location,
-        bio: newUser.bio,
-        phone: newUser.phone,
-      },
+      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role, location, bio, phone },
     });
   } catch (err) {
     console.error("❌ Register error:", err);
@@ -79,58 +34,95 @@ router.post("/register", async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/auth/login
- * @desc    Login user and return JWT
- * @access  Public
- */
-router.post("/login", async (req, res) => {
+// ===============================
+// REQUEST LOGIN OTP
+// ===============================
+router.post("/login/request-otp", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ message: "Email and password are required" });
-
+    const { email } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User does not exist" });
+    if (!user) return res.status(404).json({ msg: "User not found" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    const otpCode = generateOTP();
+    user.otp = { code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000), purpose: "login" };
+    await user.save();
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-    const { password: _, ...userData } = user.toObject(); // Exclude password
-
-    res.status(200).json({
-      token,
-      user: userData,
-    });
+    await sendOTP(email, otpCode);
+    res.json({ msg: "OTP sent to email" });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("OTP request error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * @route   GET /api/auth/me
- * @desc    Get logged-in user info
- * @access  Private
- */
-router.get("/me", async (req, res) => {
-  // Correct way to get Authorization header
-  const token = req.header("Authorization")?.split(" ")[1];
-  if (!token) return res.status(401).json({ msg: "No token, authorization denied" });
-
+// ===============================
+// VERIFY LOGIN OTP
+// ===============================
+router.post("/login/verify-otp", async (req, res) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) return res.status(404).json({ msg: "User not found" });
-    res.json(user);
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user || !user.otp || user.otp.purpose !== "login" || user.otp.code !== otp || user.otp.expiresAt < new Date()) {
+      return res.status(400).json({ msg: "Invalid or expired OTP" });
+    }
+
+    // Clear OTP after success
+    user.otp = { code: "", expiresAt: null, purpose: "" };
+    await user.save();
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const { password, ...userData } = user.toObject();
+    res.json({ msg: "OTP verified", token, user: userData });
   } catch (err) {
-    console.error("Auth error:", err);
-    res.status(401).json({ msg: "Token is not valid" });
+    console.error("OTP verify error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===============================
+// REQUEST FORGOT PASSWORD OTP
+// ===============================
+router.post("/forgot-password/request-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    const otpCode = generateOTP();
+    user.otp = { code: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000), purpose: "reset" };
+    await user.save();
+
+    await sendOTP(email, otpCode);
+    res.json({ msg: "OTP sent to email for password reset" });
+  } catch (err) {
+    console.error("Forgot password OTP error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===============================
+// VERIFY FORGOT PASSWORD OTP
+// ===============================
+router.post("/forgot-password/verify-otp", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user || !user.otp || user.otp.purpose !== "reset" || user.otp.code !== otp || user.otp.expiresAt < new Date()) {
+      return res.status(400).json({ msg: "Invalid or expired OTP" });
+    }
+
+    if (!newPassword) return res.json({ msg: "OTP verified, provide new password" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.otp = { code: "", expiresAt: null, purpose: "" };
+    await user.save();
+
+    res.json({ msg: "Password reset successfully" });
+  } catch (err) {
+    console.error("Forgot password verify error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

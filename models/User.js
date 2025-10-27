@@ -110,7 +110,16 @@ const userSchema = new mongoose.Schema(
 
     // Optional unique face embedding hash (for deduplication)
     faceHash: { type: String, index: true },
+
+    // OTP for login / password reset
+    otp: {
+      code: { type: String, default: "" },
+      expiresAt: { type: Date, default: null },
+      purpose: { type: String, enum: ["login", "reset"], default: "login" }, // distinguishes OTP type
+    },
+
   },
+  
   { timestamps: true }
 );
 
