@@ -2,33 +2,36 @@ import express from "express";
 import multer from "multer";
 import "@tensorflow/tfjs";
 import * as faceapi from "face-api.js";
-import canvas, { Canvas, Image, ImageData, loadImage } from "canvas";
+import { Canvas, Image, ImageData, loadImage, createCanvas } from "canvas";
 import sharp from "sharp";
 import Tesseract from "tesseract.js";
 import path from "path";
 import fs from "fs";
 import User from "../models/User.js";
 import auth from "../middleware/auth.js";
-import { verifyAdmin } from "../middleware/verifyAdmin.js"; // ✅ integrated
+import { verifyAdmin } from "../middleware/verifyAdmin.js";
 import cloudinary from "../config/cloudinary.js";
 import limitVerificationAttempts from "../middleware/limitVerificationAttempts.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Monkey-patch for face-api
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 
 // ===============================
 // Config
 // ===============================
 const MODEL_URL = path.join(process.cwd(), "models/face");
-const ROUTE_TIMEOUT = 60_000;
+const ROUTE_TIMEOUT = 60000; // 2-minute safety net
 
 // ===============================
-// Utility: Load Face Models
+// Load Face Models Once
 // ===============================
 async function loadFaceModels() {
   if (global.modelsLoaded) return;
-  if (!fs.existsSync(MODEL_URL)) throw new Error(`❌ Missing face model folder: ${MODEL_URL}`);
+  if (!fs.existsSync(MODEL_URL))
+    throw new Error(`❌ Missing face model folder: ${MODEL_URL}`);
 
   await Promise.all([
     faceapi.nets.ssdMobilenetv1.loadFromDisk(MODEL_URL),
@@ -39,10 +42,13 @@ async function loadFaceModels() {
 }
 
 // ===============================
-// Utility: Helpers
+// Utility Helpers
 // ===============================
 const resizeImage = (buffer, width = 400) =>
-  sharp(buffer).resize(width).jpeg({ quality: 85 }).toBuffer();
+  sharp(buffer)
+    .resize(width)
+    .jpeg({ quality: 90, brightness: 1.2 })
+    .toBuffer();
 
 const uploadToCloud = (buffer, folder = "verification_uploads") =>
   new Promise((resolve, reject) => {
@@ -53,13 +59,18 @@ const uploadToCloud = (buffer, folder = "verification_uploads") =>
     stream.end(buffer);
   });
 
+function bufferToImage(buffer) {
+  const base64 = buffer.toString("base64");
+  return loadImage(`data:image/jpeg;base64,${base64}`);
+}
+
 async function extractOcrData(imageBuffer, idNumberFallback) {
   try {
     const { data } = await Tesseract.recognize(imageBuffer, "eng");
     const text = data.text || "";
     const name = text.match(/Name[:\s]+([A-Z ]+)/i)?.[1]?.trim() || "";
     const idNum = text.match(/ID[:\s]+([A-Z0-9]+)/i)?.[1]?.trim() || idNumberFallback;
-    const dob = text.match(/DOB[:\s]+([0-9\/\-]+)/i)?.[1]?.trim() || "";
+    const dob = text.match(/(DATE OF BIRTH|Birth)[:\s]+([0-9\/\-]+)/i)?.[2]?.trim() || "";
     return { name, idNumber: idNum, dateOfBirth: dob, rawText: text };
   } catch (err) {
     console.warn("🧾 OCR failed:", err.message);
@@ -105,43 +116,44 @@ router.post(
         resizeImage(selfie.buffer),
       ]);
 
-      // 2️⃣ Upload
-      const [idImageUrl, selfieUrl] = await Promise.all([
-        uploadToCloud(resizedId),
-        uploadToCloud(resizedSelfie),
-      ]);
-    
-
-      // 3️⃣ OCR
+      // 2️⃣ Run OCR first (from ID)
       const ocrData = await extractOcrData(resizedId, idNumber);
 
-      // 4️⃣ Face Matching
+      // 3️⃣ Face Match
       await loadFaceModels();
-      const idCanvas = await loadImage(resizedId);
-      const selfieCanvas = await loadImage(resizedSelfie);
+
+      const [idCanvas, selfieCanvas] = await Promise.all([
+        bufferToImage(resizedId),
+        bufferToImage(resizedSelfie),
+      ]);
 
       const idDetection = await faceapi
         .detectSingleFace(idCanvas)
         .withFaceLandmarks()
         .withFaceDescriptor();
+
       const selfieDetection = await faceapi
         .detectSingleFace(selfieCanvas)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-      if (!idDetection || !selfieDetection)
-        return res.status(400).json({ msg: "Face not detected in one or both images" });
+      if (!idDetection || !selfieDetection) {
+        return res.status(400).json({
+          msg:
+            "Face not detected in one or both images. Please ensure good lighting and clear face visibility.",
+        });
+      }
 
       const distance = faceapi.euclideanDistance(
         idDetection.descriptor,
         selfieDetection.descriptor
       );
       const matchScore = Math.max(0, Number(((1 - distance) * 100).toFixed(2)));
-      const isMatch = distance < 0.55;
+      const isMatch = distance < 0.5;
 
       console.log(`🔎 Face comparison: match=${isMatch}, distance=${distance}`);
 
-      // 5️⃣ Duplicate Check
+      // 4️⃣ Duplicate Check
       const duplicate = await User.findOne({
         "verification.idData.idNumber": idNumber,
         _id: { $ne: req.user.id },
@@ -149,7 +161,13 @@ router.post(
       if (duplicate)
         return res.status(400).json({ msg: "This ID is already used for verification" });
 
-      // 6️⃣ Save Result
+      // 5️⃣ Upload to Cloudinary (only after successful processing)
+      const [idImageUrl, selfieUrl] = await Promise.all([
+        uploadToCloud(resizedId),
+        uploadToCloud(resizedSelfie),
+      ]);
+
+      // 6️⃣ Save result
       const user = await User.findById(req.user.id);
       if (!user) return res.status(404).json({ msg: "User not found" });
 
@@ -162,13 +180,14 @@ router.post(
         idImageUrl,
         selfieUrl,
         createdAt: new Date(),
-        reviewerNote: isMatch ? "Auto-verified by system" : "Pending admin review",
+        reviewerNote: isMatch
+          ? "Auto-verified by system"
+          : "Pending admin review",
       };
 
       user.verificationAttempts.count += 1;
       user.verificationAttempts.lastAttempt = new Date();
       await user.save();
-
       await recordAttempt(req.user.id, isMatch);
 
       return res.json({
@@ -181,7 +200,10 @@ router.post(
       });
     } catch (err) {
       console.error("💥 Verification error:", err.stack || err.message);
-      res.status(500).json({ msg: "Server error during verification" });
+      res.status(500).json({
+        msg: "Server error during verification",
+        error: err.message,
+      });
     }
   }
 );
@@ -194,7 +216,9 @@ router.get("/:id/status", auth, async (req, res) => {
   if (req.user.id !== id && req.user.role !== "admin")
     return res.status(403).json({ error: "Forbidden" });
 
-  const user = await User.findById(id).select("verified verification verificationAttempts");
+  const user = await User.findById(id).select(
+    "verified verification verificationAttempts"
+  );
   if (!user) return res.status(404).json({ error: "User not found" });
 
   res.json({
@@ -223,7 +247,8 @@ router.patch("/:id/review", verifyAdmin, async (req, res) => {
 
     user.verified = status === "verified";
     user.verification.status = status;
-    user.verification.reviewerNote = note || `Status changed to ${status} by admin`;
+    user.verification.reviewerNote =
+      note || `Status changed to ${status} by admin`;
     user.verification.reviewedAt = new Date();
 
     await user.save();
