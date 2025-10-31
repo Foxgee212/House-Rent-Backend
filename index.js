@@ -51,6 +51,7 @@ const allowedOrigins = [
   "https://house-rent-frontend-beta.vercel.app",
   "https://www.naijahome.ng",
   "https://www.naijahome.ng/",
+  "https://naijahome.ng"
 ];
 
 app.use(
