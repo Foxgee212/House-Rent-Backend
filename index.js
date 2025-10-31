@@ -9,14 +9,15 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 import { loadFaceModels } from "./utils/loadFaceModels.js";
-import otpRoute from "./routes/Otp.js"
+import otpRoute from "./routes/Otp.js";
+
 // ===== Route Imports =====
 import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
 import houseRoutes from "./routes/houses.js";
 import profileRoutes from "./routes/profile.js";
 import verificationRoutes from "./routes/verification.js";
-import adminVerificationRoutes from "./routes/adminVerification.js"
+import adminVerificationRoutes from "./routes/adminVerification.js";
 
 dotenv.config();
 
@@ -28,7 +29,7 @@ const app = express();
 // ===== Security & Performance Middleware =====
 app.use(helmet()); // Secure HTTP headers
 app.use(compression()); // Gzip compression
-app.use(express.json({ limit: "20mb" })); // Handle larger JSON bodies safely
+app.use(express.json({ limit: "20mb" })); // Handle large JSON bodies safely
 
 // ===== Logging =====
 if (process.env.NODE_ENV !== "production") {
@@ -49,9 +50,8 @@ app.use(limiter);
 const allowedOrigins = [
   "http://localhost:5173",
   "https://house-rent-frontend-beta.vercel.app",
+  "https://naijahome.ng",
   "https://www.naijahome.ng",
-  "https://www.naijahome.ng/",
-  "https://naijahome.ng"
 ];
 
 app.use(
@@ -64,8 +64,13 @@ app.use(
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   })
 );
+
+// Handle preflight requests for all routes
+app.options("*", cors());
 
 // ===== Static Files =====
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -79,7 +84,8 @@ app.get("/", (req, res) => {
   });
 });
 
-loadFaceModels().catch(err => {
+// ===== Load Face Models =====
+loadFaceModels().catch((err) => {
   console.error("⚠️ Face model load failed:", err.message);
   process.exit(1);
 });
@@ -91,8 +97,7 @@ app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
 app.use("/verification", verificationRoutes);
 app.use("/admin", adminVerificationRoutes);
-app.use("/api", otpRoute)
-
+app.use("/api", otpRoute);
 
 // ===== Global Error Handler =====
 app.use((err, req, res, next) => {
