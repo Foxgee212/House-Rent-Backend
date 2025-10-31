@@ -50,6 +50,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://house-rent-frontend-beta.vercel.app",
   "https://www.naijahome.ng",
+  "https://www.naijahome.ng/",
 ];
 
 app.use(
