@@ -24,12 +24,7 @@ const verificationSchema = new mongoose.Schema({
     enum: ["pending", "verified", "rejected"],
     default: "pending",
   },
-  score: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100,
-  },
+  score: { type: Number, default: 0, min: 0, max: 100 },
   idData: {
     name: { type: String, default: "" },
     idNumber: { type: String, default: "" },
@@ -37,30 +32,12 @@ const verificationSchema = new mongoose.Schema({
     expiryDate: { type: String, default: "" },
     rawText: { type: String, default: "" }, // OCR text
   },
-  faceMatchDistance: {
-    type: Number,
-    default: 0,
-  },
-  idImageUrl: {
-    type: String,
-    default: "",
-  },
-  selfieUrl: {
-    type: String,
-    default: "",
-  },
-  livenessPassed: {
-    type: Boolean,
-    default: false,
-  },
-  reviewerNote: {
-    type: String,
-    default: "",
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+  faceMatchDistance: { type: Number, default: 0 },
+  idImageUrl: { type: String, default: "" },
+  selfieUrl: { type: String, default: "" },
+  livenessPassed: { type: Boolean, default: false },
+  reviewerNote: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
 // ===============================
@@ -102,7 +79,8 @@ const userSchema = new mongoose.Schema(
 
     // Account State
     deleted: { type: Boolean, default: false },
-    verified: { type: Boolean, default: false },
+    verified: { type: Boolean, default: false }, // for ID verification
+    emailVerified: { type: Boolean, default: false }, // for email OTP verification ✅
 
     // Verification Data
     verification: verificationSchema,
@@ -122,7 +100,6 @@ const userSchema = new mongoose.Schema(
     // ===============================
     emailVerificationOTP: { type: String },
     emailVerificationExpires: { type: Date },
-    emailVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -145,7 +122,7 @@ userSchema.methods.resetVerificationAttempts = async function () {
   await this.save();
 };
 
-// Quick summary for admin panels
+// Admin panel summary
 userSchema.virtual("verificationSummary").get(function () {
   return {
     status: this.verification?.status || "pending",
@@ -153,8 +130,37 @@ userSchema.virtual("verificationSummary").get(function () {
     idNumber: this.verification?.idData?.idNumber || "N/A",
     attempts: this.verificationAttempts?.count || 0,
     verified: this.verified,
+    emailVerified: this.emailVerified,
   };
 });
 
+// ===============================
+// 🧹 AUTO CLEANUP: Delete unverified users older than 24h
+// ===============================
+async function cleanupUnverifiedUsers() {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
+  try {
+    const result = await mongoose.model("User").deleteMany({
+      emailVerified: false,
+      createdAt: { $lt: cutoff },
+    });
+
+    if (result.deletedCount > 0) {
+      console.log(`🧹 Auto-cleaned ${result.deletedCount} unverified user(s).`);
+    }
+  } catch (err) {
+    console.error("❌ Error during unverified user cleanup:", err.message);
+  }
+}
+
+// Run cleanup once when the model is first loaded
+cleanupUnverifiedUsers();
+
+// Then run cleanup automatically every 6 hours
+setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
+
+// ===============================
+// Export Model
+// ===============================
 const User = mongoose.model("User", userSchema);
 export default User;
