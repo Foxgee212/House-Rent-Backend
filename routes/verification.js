@@ -110,100 +110,92 @@ router.post(
       if (!idType || !idNumber || !idImage || !selfie)
         return res.status(400).json({ msg: "All fields and images are required" });
 
-      // 1️⃣ Resize
-      const [resizedId, resizedSelfie] = await Promise.all([
-        resizeImage(idImage.buffer),
-        resizeImage(selfie.buffer),
-      ]);
 
-      // 2️⃣ Run OCR first (from ID)
-      const ocrData = await extractOcrData(resizedId, idNumber);
-
-      // 3️⃣ Face Match
-      await loadFaceModels();
-
-      const [idCanvas, selfieCanvas] = await Promise.all([
-        bufferToImage(resizedId),
-        bufferToImage(resizedSelfie),
-      ]);
-
-      const idDetection = await faceapi
-        .detectSingleFace(idCanvas)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      const selfieDetection = await faceapi
-        .detectSingleFace(selfieCanvas)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (!idDetection || !selfieDetection) {
-        return res.status(400).json({
-          msg:
-            "Face not detected in one or both images. Please ensure good lighting and clear face visibility.",
-        });
-      }
-
-      const distance = faceapi.euclideanDistance(
-        idDetection.descriptor,
-        selfieDetection.descriptor
-      );
-      const matchScore = Math.max(0, Number(((1 - distance) * 100).toFixed(2)));
-      const isMatch = distance < 0.5;
-
-      console.log(`🔎 Face comparison: match=${isMatch}, distance=${distance}`);
-
-      // 4️⃣ Duplicate Check
-      const duplicate = await User.findOne({
-        "verification.idData.idNumber": idNumber,
-        _id: { $ne: req.user.id },
-      });
-      if (duplicate)
-        return res.status(400).json({ msg: "This ID is already used for verification" });
-
-      // 5️⃣ Upload to Cloudinary (only after successful processing)
-      const [idImageUrl, selfieUrl] = await Promise.all([
-        uploadToCloud(resizedId),
-        uploadToCloud(resizedSelfie),
-      ]);
-
-      // 6️⃣ Save result
       const user = await User.findById(req.user.id);
-      if (!user) return res.status(404).json({ msg: "User not found" });
+      if(!user) return res.status(404).json({ msg: "User not found"})
 
-      user.verified = isMatch;
-      user.verification = {
-        status: isMatch ? "verified" : "pending_review",
-        score: matchScore,
-        idData: ocrData,
-        faceMatchDistance: distance,
-        idImageUrl,
-        selfieUrl,
-        createdAt: new Date(),
-        reviewerNote: isMatch
-          ? "Auto-verified by system"
-          : "Pending admin review",
-      };
+        user.verification = {
+          status: "pending",
+          score: 0,
+          idData: { idNumber},
+          faceMatchDistance: null,
+          idImageUrl: null,
+          selfieUrl: null,
+          createdAt: new Date(),
+          reviewerNote: "Verification submitted, awaiting processing",
+        };
+        await user.save();
 
-      user.verificationAttempts.count += 1;
-      user.verificationAttempts.lastAttempt = new Date();
-      await user.save();
-      await recordAttempt(req.user.id, isMatch);
+      //Respond immediately
+      res.json({msg: "Verification submitted, pending outcome", verificationId: user._id})
 
-      return res.json({
-        msg: isMatch
-          ? "✅ Verification successful (auto)"
-          : "⚠️ Verification pending admin review",
-        verified: isMatch,
-        matchScore,
-        distance,
+
+      // ================================
+      // Background Processing
+      // ================================
+
+          setImmediate(async () => {
+        try {
+          const [resizedId, resizedSelfie] = await Promise.all([
+            resizeImage(idImage.buffer),
+            resizeImage(selfie.buffer),
+          ]);
+
+          const ocrData = await extractOcrData(resizedId, idNumber);
+
+          await loadFaceModels();
+
+          const [idCanvas, selfieCanvas] = await Promise.all([
+            bufferToImage(resizedId),
+            bufferToImage(resizedSelfie),
+          ]);
+
+          const idDetection = await faceapi
+            .detectSingleFace(idCanvas)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+          const selfieDetection = await faceapi
+            .detectSingleFace(selfieCanvas)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+          let isMatch = false;
+          let distance = null;
+          let matchScore = 0;
+
+          if (idDetection && selfieDetection) {
+            distance = faceapi.euclideanDistance(idDetection.descriptor, selfieDetection.descriptor);
+            matchScore = Math.max(0, Number(((1 - distance) * 100).toFixed(2)));
+            isMatch = distance < 0.5;
+          }
+
+          const [idImageUrl, selfieUrl] = await Promise.all([
+            uploadToCloud(resizedId),
+            uploadToCloud(resizedSelfie),
+          ]);
+
+          // Update user with final outcome
+          user.verification.status = isMatch ? "verified" : "pending";
+          user.verification.score = matchScore;
+          user.verification.faceMatchDistance = distance;
+          user.verification.idData = ocrData;
+          user.verification.idImageUrl = idImageUrl;
+          user.verification.selfieUrl = selfieUrl;
+          user.verification.reviewerNote = isMatch
+            ? "Auto-verified by system"
+            : "Pending admin review";
+
+          await user.save();
+          await recordAttempt(user._id, isMatch);
+          console.log(`🔔 Background verification completed for user ${user.email}`);
+        } catch (err) {
+          console.error("💥 Background verification error:", err);
+        }
       });
     } catch (err) {
-      console.error("💥 Verification error:", err.stack || err.message);
-      res.status(500).json({
-        msg: "Server error during verification",
-        error: err.message,
-      });
+      console.error("💥 Verification submission error:", err);
+      res.status(500).json({ msg: "Server error during verification submission" });
     }
   }
 );

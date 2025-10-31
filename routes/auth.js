@@ -7,7 +7,7 @@ import { generateOTP, sendOTP } from "../utils/otp.js";
 const router = express.Router();
 
 /* ============================================================
-   📍 REGISTER USER
+   📍 REGISTER USER (with OTP email verification)
 ============================================================ */
 router.post("/register", async (req, res) => {
   try {
@@ -24,7 +24,11 @@ router.post("/register", async (req, res) => {
     if (existingUser)
       return res.status(400).json({ msg: "User already exists." });
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate OTP for verification
+    const otp = generateOTP(6);
 
     const newUser = new User({
       name,
@@ -34,28 +38,74 @@ router.post("/register", async (req, res) => {
       location,
       bio,
       phone,
-      isVerified: true, // direct login, no OTP verification
+      otp,
+      otpExpires: Date.now() + 10 * 60 * 1000, // expires in 10 min
+      isVerified: false,
     });
 
     await newUser.save();
 
-    const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    // Send OTP email
+    await sendOTP(email, otp);
 
     res.status(201).json({
       success: true,
-      msg: "User registered successfully.",
-      token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-      },
+      msg: "Registration successful. Please check your email for the OTP to verify your account.",
     });
   } catch (err) {
     console.error("❌ Register error:", err);
+    res.status(500).json({ msg: "Server error.", error: err.message });
+  }
+});
+
+/* ============================================================
+   📍 VERIFY EMAIL WITH OTP
+============================================================ */
+router.post("/verify-email", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp)
+      return res.status(400).json({ msg: "Email and OTP are required." });
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ msg: "User not found." });
+
+    if (user.isVerified)
+      return res.status(400).json({ msg: "Email already verified." });
+
+    if (user.otp !== otp)
+      return res.status(400).json({ msg: "Invalid OTP." });
+
+    if (Date.now() > user.otpExpires)
+      return res.status(400).json({ msg: "OTP expired. Please register again." });
+
+    // Mark user as verified
+    user.isVerified = true;
+    user.otp = null;
+    user.otpExpires = null;
+    await user.save();
+
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      success: true,
+      msg: "Email verified successfully.",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Verify Email error:", err);
     res.status(500).json({ msg: "Server error.", error: err.message });
   }
 });
@@ -70,16 +120,17 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ msg: "Email and password are required." });
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "Invalid credentials." });
+    if (!user) return res.status(400).json({ msg: "User does not exist" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials." });
+
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
-    const { password: _, otp, otpExpires, ...userData } = user.toObject();
+    const { password: _, ...userData } = user.toObject();
     res.status(200).json({
       success: true,
       msg: "Login successful.",
@@ -113,6 +164,7 @@ router.post("/forgot-password", async (req, res) => {
     res.status(200).json({
       success: true,
       msg: "OTP sent to your email for password reset.",
+      otp,
     });
   } catch (err) {
     console.error("❌ Forgot Password error:", err);

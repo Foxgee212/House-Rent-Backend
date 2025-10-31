@@ -116,6 +116,13 @@ const userSchema = new mongoose.Schema(
     // ===============================
     resetPasswordOTP: { type: String },
     resetPasswordExpires: { type: Date },
+
+    // ===============================
+    // Email Verification OTP Fields 📧
+    // ===============================
+    emailVerificationOTP: { type: String },
+    emailVerificationExpires: { type: Date },
+    emailVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

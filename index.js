@@ -9,7 +9,7 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 import { loadFaceModels } from "./utils/loadFaceModels.js";
-
+import otpRoute from "./routes/Otp.js"
 // ===== Route Imports =====
 import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
@@ -49,6 +49,7 @@ app.use(limiter);
 const allowedOrigins = [
   "http://localhost:5173",
   "https://house-rent-frontend-beta.vercel.app",
+  "https://www.naijahome.ng",
 ];
 
 app.use(
@@ -88,6 +89,7 @@ app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
 app.use("/verification", verificationRoutes);
 app.use("/admin", adminVerificationRoutes);
+app.use("/api", otpRoute)
 
 
 // ===== Global Error Handler =====
