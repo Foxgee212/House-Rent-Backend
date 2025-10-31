@@ -43,7 +43,7 @@ export async function sendOTP(email, otp, type = "verification") {
     `;
 
     await resend.emails.send({
-      from: "HouseRent <YOUR_VERIFIED_EMAIL@domain.com>", // must be verified
+      from: "HouseRent <ibrahymabdullahi@naijahome.ng>", // must be verified
       to: email,
       subject,
       html,
