@@ -1,23 +1,20 @@
 import mongoose from "mongoose";
 
-// ===============================
-// Subschema: Verification Attempts
-// ===============================
+/* ============================================================
+   🔹 SUBSCHEMAS
+============================================================ */
+
+// Track how many verification attempts a user made
 const verificationAttemptSchema = new mongoose.Schema({
   count: {
     type: Number,
     default: 0,
     min: [0, "Attempt count cannot be negative"],
   },
-  lastAttempt: {
-    type: Date,
-    default: null,
-  },
+  lastAttempt: { type: Date, default: null },
 });
 
-// ===============================
-// Subschema: Verification Metadata
-// ===============================
+// Store all identity verification data (OCR, liveness, etc.)
 const verificationSchema = new mongoose.Schema({
   status: {
     type: String,
@@ -30,7 +27,7 @@ const verificationSchema = new mongoose.Schema({
     idNumber: { type: String, default: "" },
     dateOfBirth: { type: String, default: "" },
     expiryDate: { type: String, default: "" },
-    rawText: { type: String, default: "" }, // OCR text
+    rawText: { type: String, default: "" }, // OCR extracted text
   },
   faceMatchDistance: { type: Number, default: 0 },
   idImageUrl: { type: String, default: "" },
@@ -40,9 +37,9 @@ const verificationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// ===============================
-// Main User Schema
-// ===============================
+/* ============================================================
+   👤 USER SCHEMA
+============================================================ */
 const userSchema = new mongoose.Schema(
   {
     // Basic Info
@@ -67,7 +64,7 @@ const userSchema = new mongoose.Schema(
     // Roles
     role: {
       type: String,
-      enum: ["landlord", "tenant", "admin"],
+      enum: ["tenant", "landlord", "admin"],
       default: "tenant",
     },
 
@@ -77,43 +74,39 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, default: "" },
     profilePic: { type: String, default: "" },
 
-    // Account State
+    // Account States
     deleted: { type: Boolean, default: false },
-    verified: { type: Boolean, default: false }, // for ID verification
-    emailVerified: { type: Boolean, default: false }, // for email OTP verification ✅
+    verified: { type: Boolean, default: false }, // For ID verification
+    emailVerified: { type: Boolean, default: false }, // For email OTP verification
 
     // Verification Data
     verification: verificationSchema,
     verificationAttempts: verificationAttemptSchema,
 
-    // Optional unique face embedding hash (for deduplication)
+    // Face embedding hash (optional for deduplication)
     faceHash: { type: String, index: true },
 
-    // ===============================
-    // Password Reset OTP Fields 🔐
-    // ===============================
+    /* ============================================================
+       🔐 PASSWORD RESET & EMAIL OTP FIELDS
+    ============================================================ */
     resetPasswordOTP: { type: String },
     resetPasswordExpires: { type: Date },
-
-    // ===============================
-    // Email Verification OTP Fields 📧
-    // ===============================
     emailVerificationOTP: { type: String },
     emailVerificationExpires: { type: Date },
   },
   { timestamps: true }
 );
 
-// ===============================
-// Indexes
-// ===============================
+/* ============================================================
+   ⚙️ INDEXES
+============================================================ */
 userSchema.index({ email: 1 });
 userSchema.index({ "verification.status": 1 });
 userSchema.index({ faceHash: 1 });
 
-// ===============================
-// Virtuals & Utilities
-// ===============================
+/* ============================================================
+   🧠 VIRTUALS & METHODS
+============================================================ */
 
 // Reset daily verification attempts
 userSchema.methods.resetVerificationAttempts = async function () {
@@ -122,7 +115,7 @@ userSchema.methods.resetVerificationAttempts = async function () {
   await this.save();
 };
 
-// Admin panel summary
+// Admin summary virtual
 userSchema.virtual("verificationSummary").get(function () {
   return {
     status: this.verification?.status || "pending",
@@ -134,13 +127,13 @@ userSchema.virtual("verificationSummary").get(function () {
   };
 });
 
-// ===============================
-// 🧹 AUTO CLEANUP: Delete unverified users older than 24h
-// ===============================
-async function cleanupUnverifiedUsers() {
+/* ============================================================
+   🧹 AUTO CLEANUP FUNCTION (Exported separately)
+============================================================ */
+export async function cleanupUnverifiedUsers() {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
   try {
-    const result = await mongoose.model("User").deleteMany({
+    const result = await User.deleteMany({
       emailVerified: false,
       createdAt: { $lt: cutoff },
     });
@@ -153,14 +146,24 @@ async function cleanupUnverifiedUsers() {
   }
 }
 
-// Run cleanup once when the model is first loaded
-cleanupUnverifiedUsers();
-
-// Then run cleanup automatically every 6 hours
-setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
-
-// ===============================
-// Export Model
-// ===============================
+/* ============================================================
+   ✅ MODEL REGISTRATION
+============================================================ */
 const User = mongoose.model("User", userSchema);
 export default User;
+
+/* ============================================================
+   🚀 SAFE CLEANUP SCHEDULER (starts only after MongoDB connects)
+============================================================ */
+if (mongoose.connection.readyState === 1) {
+  // Mongo is already connected
+  cleanupUnverifiedUsers();
+  setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
+} else {
+  // Wait for connection event
+  mongoose.connection.once("connected", () => {
+    console.log("🕓 Connected to MongoDB — starting unverified user cleanup loop");
+    cleanupUnverifiedUsers();
+    setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
+  });
+}

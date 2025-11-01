@@ -18,6 +18,7 @@ import houseRoutes from "./routes/houses.js";
 import profileRoutes from "./routes/profile.js";
 import verificationRoutes from "./routes/verification.js";
 import adminVerificationRoutes from "./routes/adminVerification.js";
+import { cleanupUnverifiedUsers } from "./utils/cleanup.js";
 
 dotenv.config();
 
@@ -39,7 +40,7 @@ if (process.env.NODE_ENV !== "production") {
 // ===== Rate Limiting =====
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100, // Limit each IP
+  max: 100,
   message: { message: "Too many requests. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -54,23 +55,37 @@ const allowedOrigins = [
   "https://www.naijahome.ng",
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+};
 
-// Handle preflight requests for all routes
-app.options("*", cors());
+app.use(cors(corsOptions));
+
+// ✅ Properly handle preflight requests (no wildcard)
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept"
+    );
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // ===== Static Files =====
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -99,6 +114,11 @@ app.use("/verification", verificationRoutes);
 app.use("/admin", adminVerificationRoutes);
 app.use("/api", otpRoute);
 
+// ===== Global 404 (MUST be after all routes) =====
+app.use((req, res) => {
+  res.status(404).json({ status: "error", message: "Route not found" });
+});
+
 // ===== Global Error Handler =====
 app.use((err, req, res, next) => {
   console.error("❌ Global Error:", err);
@@ -114,7 +134,13 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("✅ MongoDB connected successfully"))
+  .then(() => {
+    console.log("✅ MongoDB connected successfully");
+
+    // Run cleanup immediately and every 6 hours
+    cleanupUnverifiedUsers();
+    setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
+  })
   .catch((err) => console.error("❌ MongoDB connection error:", err.message));
 
 // ===== Start Server =====

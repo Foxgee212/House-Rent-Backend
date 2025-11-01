@@ -9,7 +9,7 @@ const router = express.Router();
 /* ============================================================
    🧹 AUTO-CLEANUP: Remove unverified users older than 24 hours
 ============================================================ */
-async function cleanupUnverifiedUsers() {
+ export async function cleanupUnverifiedUsers() {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
   try {
     const result = await User.deleteMany({
@@ -25,8 +25,7 @@ async function cleanupUnverifiedUsers() {
   }
 }
 
-// Run cleanup every 6 hours automatically
-setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
+
 
 /* ============================================================
    📍 REGISTER USER (send OTP for email verification)
