@@ -91,6 +91,7 @@ const userSchema = new mongoose.Schema(
     ============================================================ */
     resetPasswordOTP: { type: String },
     resetPasswordExpires: { type: Date },
+    resetPasswordVerified: { type: Boolean, default: false }, // ✅ Added
     emailVerificationOTP: { type: String },
     emailVerificationExpires: { type: Date },
   },
