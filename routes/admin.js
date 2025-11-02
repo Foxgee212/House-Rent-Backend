@@ -7,9 +7,13 @@ import {
   getAllHouses,
   approveHouse,
   deleteHouse,
-  getDashboardStats,  // ✅ Use the controller version instead of inline code
+  getDashboardStats,
   getPendingHouses,
   ApprovedHouses,
+  getAllVerifications,     // 🆕 added
+  getVerificationById,   // 🆕 added
+  approveVerification,        // 🆕 added
+  rejectVerification          // 🆕 added
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -28,6 +32,12 @@ router.get("/stats", auth, verifyAdmin, getDashboardStats);
 // 🏘️ Get all houses
 router.get("/houses", auth, verifyAdmin, getAllHouses);
 
+// 🕒 Get pending houses
+router.get("/pending", auth, verifyAdmin, getPendingHouses);
+
+// ✅ Get approved houses
+router.get("/approved", auth, verifyAdmin, ApprovedHouses);
+
 // ✅ Approve a house
 router.patch("/houses/:id/approve", auth, verifyAdmin, approveHouse);
 
@@ -44,9 +54,20 @@ router.get("/users", auth, verifyAdmin, getAllUsers);
 // ❌ Delete a user
 router.delete("/users/:id", auth, verifyAdmin, deleteUser);
 
-// Pending users
-router.get("/pending", auth, verifyAdmin, getPendingHouses )
+/* ==============================
+   🧾 VERIFICATION MANAGEMENT ROUTES
+   ============================== */
 
-//approved houses
-router.get("/approved", auth, verifyAdmin, ApprovedHouses)
+// 🔍 Get all pending verifications
+router.get("/verifications", auth, verifyAdmin, getAllVerifications);
+
+// 👁️ View single verification details
+router.get("/verifications/:id", auth, verifyAdmin, getVerificationById);
+
+// ✅ Approve verification
+router.patch("/verifications/:id/approve", auth, verifyAdmin, approveVerification);
+
+// ❌ Reject verification
+router.patch("/verifications/:id/reject", auth, verifyAdmin, rejectVerification);
+
 export default router;
