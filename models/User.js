@@ -18,8 +18,8 @@ const verificationAttemptSchema = new mongoose.Schema({
 const verificationSchema = new mongoose.Schema({
   status: {
     type: String,
-    enum: ["pending", "verified", "rejected"],
-    default: "pending",
+    enum: ["unverified",  "pending", "verified", "rejected"],
+    default: "unverified",
   },
   score: { type: Number, default: 0, min: 0, max: 100 },
   idData: {
@@ -132,7 +132,7 @@ userSchema.virtual("verificationSummary").get(function () {
    🧹 AUTO CLEANUP FUNCTION (Exported separately)
 ============================================================ */
 export async function cleanupUnverifiedUsers() {
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
+  const cutoff = Date.now() - 60 * 60 * 1000; // 1 hour ago
   try {
     const result = await User.deleteMany({
       emailVerified: false,

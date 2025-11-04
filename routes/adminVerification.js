@@ -24,7 +24,7 @@ router.post("/verifications/:id/:action", verifyAdmin, async (req, res) => {
     user.verification.status = "verified";
   } else if (action === "reject") {
     user.verified = false;
-    user.verification.status = "failed";
+    user.verification.status = "rejected";
   }
   await user.save();
 

@@ -28,9 +28,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // ===== Security & Performance Middleware =====
-app.use(helmet()); // Secure HTTP headers
-app.use(compression()); // Gzip compression
-app.use(express.json({ limit: "20mb" })); // Handle large JSON bodies safely
+app.use(helmet());
+app.use(compression());
+app.use(express.json({ limit: "20mb" }));
 
 // ===== Logging =====
 if (process.env.NODE_ENV !== "production") {
@@ -47,7 +47,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// ===== CORS Setup (Final Fixed Version) =====
+// ===== CORS Configuration =====
 const allowedOrigins = [
   "http://localhost:5173",
   "https://house-rent-frontend-beta.vercel.app",
@@ -55,29 +55,43 @@ const allowedOrigins = [
   "https://www.naijahome.ng",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn("❌ Blocked by CORS:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn("❌ Blocked by CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+};
 
-// ✅ Handle preflight requests automatically (no wildcard error)
-app.options(cors());
+app.use(cors(corsOptions));
+
+// ===== Handle Preflight Requests =====
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept"
+    );
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // ===== Static Files =====
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ===== Base Health Route =====
+// ===== Base Route =====
 app.get("/", (req, res) => {
   res.status(200).json({
     status: "success",
@@ -88,11 +102,11 @@ app.get("/", (req, res) => {
 
 // ===== Load Face Models =====
 loadFaceModels().catch((err) => {
-  console.error("⚠️ Face model load failed:", err.message);
+  console.error("⚠️ Failed to load face models:", err.message);
   process.exit(1);
 });
 
-// ===== Main Routes =====
+// ===== API Routes =====
 app.use("/auth", authRoutes);
 app.use("/houses", houseRoutes);
 app.use("/profile", profileRoutes);
@@ -126,7 +140,7 @@ mongoose
 
     // Run cleanup immediately and every 6 hours
     cleanupUnverifiedUsers();
-    setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
+    setInterval(cleanupUnverifiedUsers, 2 * 60 * 60 * 1000);
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err.message));
 

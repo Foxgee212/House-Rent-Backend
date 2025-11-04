@@ -9,7 +9,7 @@ import {
   deleteHouse,
   getDashboardStats,
   getPendingHouses,
-  ApprovedHouses,
+  getApprovedHouses,
   getAllVerifications,     // 🆕 added
   getVerificationById,   // 🆕 added
   approveVerification,        // 🆕 added
@@ -36,7 +36,7 @@ router.get("/houses", auth, verifyAdmin, getAllHouses);
 router.get("/pending", auth, verifyAdmin, getPendingHouses);
 
 // ✅ Get approved houses
-router.get("/approved", auth, verifyAdmin, ApprovedHouses);
+router.get("/approved", auth, verifyAdmin, getApprovedHouses);
 
 // ✅ Approve a house
 router.patch("/houses/:id/approve", auth, verifyAdmin, approveHouse);
