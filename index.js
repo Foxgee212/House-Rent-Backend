@@ -47,7 +47,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// ===== CORS Setup =====
+// ===== CORS Setup (Fixed) =====
 const allowedOrigins = [
   "http://localhost:5173",
   "https://house-rent-frontend-beta.vercel.app",
@@ -55,37 +55,24 @@ const allowedOrigins = [
   "https://www.naijahome.ng",
 ];
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
-};
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn("❌ Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  })
+);
 
-app.use(cors(corsOptions));
-
-// ✅ Properly handle preflight requests (no wildcard)
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept"
-    );
-    return res.sendStatus(204);
-  }
-  next();
-});
+// ✅ Handle preflight requests automatically
+app.options("*", cors());
 
 // ===== Static Files =====
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -114,7 +101,7 @@ app.use("/verification", verificationRoutes);
 app.use("/admin", adminVerificationRoutes);
 app.use("/api", otpRoute);
 
-// ===== Global 404 (MUST be after all routes) =====
+// ===== Global 404 =====
 app.use((req, res) => {
   res.status(404).json({ status: "error", message: "Route not found" });
 });
