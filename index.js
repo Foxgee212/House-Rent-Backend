@@ -47,7 +47,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// ===== CORS Setup (Fixed) =====
+// ===== CORS Setup (Final Fixed Version) =====
 const allowedOrigins = [
   "http://localhost:5173",
   "https://house-rent-frontend-beta.vercel.app",
@@ -71,8 +71,8 @@ app.use(
   })
 );
 
-// ✅ Handle preflight requests automatically
-app.options("*", cors());
+// ✅ Handle preflight requests automatically (no wildcard error)
+app.options(cors());
 
 // ===== Static Files =====
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
