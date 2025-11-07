@@ -93,7 +93,7 @@ router.post("/resend-otp", async (req, res) => {
 });
 
 /* ============================================================
-   📍 VERIFY OTP (signup or forgot password)
+   📍 VERIFY OTP (signup or forgot password)s
 ============================================================ */
 router.post("/verify-otp", async (req, res) => {
   try {
