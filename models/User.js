@@ -4,21 +4,17 @@ import mongoose from "mongoose";
    🔹 SUBSCHEMAS
 ============================================================ */
 
-// Track how many verification attempts a user made
+// Track verification attempts
 const verificationAttemptSchema = new mongoose.Schema({
-  count: {
-    type: Number,
-    default: 0,
-    min: [0, "Attempt count cannot be negative"],
-  },
+  count: { type: Number, default: 0, min: [0, "Attempt count cannot be negative"] },
   lastAttempt: { type: Date, default: null },
 });
 
-// Store all identity verification data (OCR, liveness, etc.)
+// Store identity verification data (OCR, face match, liveness)
 const verificationSchema = new mongoose.Schema({
   status: {
     type: String,
-    enum: ["unverified",  "pending", "verified", "rejected"],
+    enum: ["unverified", "pending", "verified", "rejected"],
     default: "unverified",
   },
   score: { type: Number, default: 0, min: 0, max: 100 },
@@ -43,28 +39,21 @@ const verificationSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     // Basic Info
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-      trim: true,
-    },
+    name: { type: String, required: true, trim: true },
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: true,
       unique: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
     },
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-    },
+    password: { type: String, required: true },
 
     // Roles
     role: {
       type: String,
-      enum: ["tenant", "landlord", "admin"],
+      enum: ["tenant", "landlord", "agent", "admin"],
       default: "tenant",
     },
 
@@ -76,22 +65,20 @@ const userSchema = new mongoose.Schema(
 
     // Account States
     deleted: { type: Boolean, default: false },
-    verified: { type: Boolean, default: false }, // For ID verification
-    emailVerified: { type: Boolean, default: false }, // For email OTP verification
+    verified: { type: Boolean, default: false }, // True if identity verification passed
+    emailVerified: { type: Boolean, default: false }, // True if email OTP verified
 
-    // Verification Data
+    // Verification
     verification: verificationSchema,
     verificationAttempts: verificationAttemptSchema,
 
-    // Face embedding hash (optional for deduplication)
+    // Face embedding hash (optional)
     faceHash: { type: String, index: true },
 
-    /* ============================================================
-       🔐 PASSWORD RESET & EMAIL OTP FIELDS
-    ============================================================ */
+    // Password reset & email OTP
     resetPasswordOTP: { type: String },
     resetPasswordExpires: { type: Date },
-    resetPasswordVerified: { type: Boolean, default: false }, // ✅ Added
+    resetPasswordVerified: { type: Boolean, default: false },
     emailVerificationOTP: { type: String },
     emailVerificationExpires: { type: Date },
   },
@@ -106,7 +93,7 @@ userSchema.index({ "verification.status": 1 });
 userSchema.index({ faceHash: 1 });
 
 /* ============================================================
-   🧠 VIRTUALS & METHODS
+   🧠 METHODS & VIRTUALS
 ============================================================ */
 
 // Reset daily verification attempts
@@ -116,7 +103,7 @@ userSchema.methods.resetVerificationAttempts = async function () {
   await this.save();
 };
 
-// Admin summary virtual
+// Admin-friendly summary of verification
 userSchema.virtual("verificationSummary").get(function () {
   return {
     status: this.verification?.status || "pending",
@@ -129,16 +116,15 @@ userSchema.virtual("verificationSummary").get(function () {
 });
 
 /* ============================================================
-   🧹 AUTO CLEANUP FUNCTION (Exported separately)
+   🧹 AUTO CLEANUP FUNCTION
 ============================================================ */
 export async function cleanupUnverifiedUsers() {
-  const cutoff = Date.now() - 60 * 60 * 1000; // 1 hour ago
+  const cutoff = Date.now() - 60 * 60 * 1000; // 1 hour
   try {
     const result = await User.deleteMany({
       emailVerified: false,
       createdAt: { $lt: cutoff },
     });
-
     if (result.deletedCount > 0) {
       console.log(`🧹 Auto-cleaned ${result.deletedCount} unverified user(s).`);
     }
@@ -154,14 +140,12 @@ const User = mongoose.model("User", userSchema);
 export default User;
 
 /* ============================================================
-   🚀 SAFE CLEANUP SCHEDULER (starts only after MongoDB connects)
+   🚀 SAFE CLEANUP SCHEDULER
 ============================================================ */
 if (mongoose.connection.readyState === 1) {
-  // Mongo is already connected
   cleanupUnverifiedUsers();
   setInterval(cleanupUnverifiedUsers, 6 * 60 * 60 * 1000);
 } else {
-  // Wait for connection event
   mongoose.connection.once("connected", () => {
     console.log("🕓 Connected to MongoDB — starting unverified user cleanup loop");
     cleanupUnverifiedUsers();

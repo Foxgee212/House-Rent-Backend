@@ -6,16 +6,16 @@ export default function ensureVerified(req, res, next) {
       return res.status(401).json({ error: "Unauthorized. Please log in first." });
     }
 
-    // ✅ Ensure landlords are verified before accessing restricted routes
-    if (req.user.role === "landlord") {
+    // ✅ Ensure landlords and agents are verified before accessing restricted routes
+    if (["landlord", "agent"].includes(req.user.role)) {
       if (!req.user.verification || req.user.verification.status !== "verified") {
         return res.status(403).json({
-          error: "Access denied. Landlord identity verification required.",
+          error: `Access denied. ${req.user.role.charAt(0).toUpperCase() + req.user.role.slice(1)} identity verification required.`,
         });
       }
     }
 
-    // ✅ Allow other roles or verified landlords
+    // ✅ Allow tenants/buyers and verified landlords/agents
     next();
   } catch (error) {
     console.error("ensureVerified middleware error:", error.message);

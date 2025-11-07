@@ -16,7 +16,7 @@ router.post("/register", async (req, res) => {
     if (!name || !email || !password)
       return res.status(400).json({ msg: "Name, email, and password are required." });
 
-    const allowedRoles = ["tenant", "landlord", "admin"];
+    const allowedRoles = ["tenant", "landlord", "agent", "admin"];
     if (!allowedRoles.includes(role))
       return res.status(400).json({ msg: "Invalid user role." });
 

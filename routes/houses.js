@@ -1,34 +1,36 @@
 // routes/houses.js
 import express from "express";
 import auth from "../middleware/auth.js";
-import ensureVerified from "../middleware/ensureVerified.js"; // ✅ import the middleware
+import ensureVerified from "../middleware/ensureVerified.js"; 
 import upload from "../middleware/upload.js";
+import House from "../models/House.js";
+import mongoose from "mongoose";
+
 import {
   createHouse,
   getHouses,
   getHouseById,
   updateAvailability,
+  getApprovedSales,
+  createSaleHouse,
+  updateSaleHouse,
+  getMySales,
 } from "../controllers/houseController.js";
-import House from "../models/House.js";
 import { deleteHouse } from "../controllers/adminController.js";
 
 const router = express.Router();
 
-// -------------------- Routes --------------------
+// ==============================
+// RENTAL ROUTES
+// ==============================
 
-// @route   POST /api/houses
-// @desc    Add new house (Landlord only, verified)
-// @access  Private
+// Create a new rental house (Landlord only, verified)
 router.post("/", auth, ensureVerified, upload.array("images", 5), createHouse);
 
-// @route   GET /api/houses
-// @desc    Get all houses (Public)
-// @access  Public
+// Get all rental houses (Public)
 router.get("/", getHouses);
 
-// @route   GET /api/houses/approved
-// @desc    Get all approved houses (Public)
-// @access  Public
+// Get all approved rental houses (Public)
 router.get("/approved", async (req, res) => {
   try {
     const houses = await House.find({ status: "approved" }).populate(
@@ -42,14 +44,10 @@ router.get("/approved", async (req, res) => {
   }
 });
 
-// @route   GET /api/houses/my
-// @desc    Get houses of logged-in landlord
-// @access  Private
+// Get logged-in landlord's own rentals (Private)
 router.get("/my", auth, ensureVerified, async (req, res) => {
   try {
-    const houses = await House.find({ landlord: req.user.id }).sort({
-      createdAt: -1,
-    });
+    const houses = await House.find({ landlord: req.user.id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, houses });
   } catch (err) {
     console.error("Get my houses error:", err);
@@ -57,19 +55,49 @@ router.get("/my", auth, ensureVerified, async (req, res) => {
   }
 });
 
-// @route   GET /api/houses/:id
-// @desc    Get single house by ID (Public)
-// @access  Public
-router.get("/:id", getHouseById);
-
-// @route   PATCH /api/houses/:id/availability
-// @desc    Update house availability (Landlord only, verified)
-// @access  Private
+// Update rental house availability (Landlord only, verified)
 router.patch("/:id/availability", auth, ensureVerified, updateAvailability);
 
-// @route   DELETE /api/houses/:id
-// @desc    Delete houses from the landlord dashboard (Landlord only, verified)
-// @access  Private
+// Delete a rental house (Landlord only, verified)
 router.delete("/:id", auth, ensureVerified, deleteHouse);
+
+// ==============================
+// SALES ROUTES
+// ==============================
+
+// Get all approved houses for sale (Public)
+router.get("/approved-sales", getApprovedSales);
+
+// Create a new house for sale (Landlord or Agent, verified)
+router.post("/sales", auth, ensureVerified, upload.array("images", 5), createSaleHouse);
+
+// Update a house for sale (Landlord or Agent, verified)
+router.put("/sales/:id", auth, ensureVerified, upload.array("images", 5), updateSaleHouse);
+
+// Get logged-in user's own sales (Private)
+router.get("/my-sales", auth, ensureVerified, getMySales);
+
+// ==============================
+// PARAMETERIZED ROUTE (Get single house by ID)
+// Must be last to avoid conflicts with above routes
+// ==============================
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  // Validate ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, error: "Invalid house ID" });
+  }
+
+  try {
+    const house = await House.findById(id).populate("landlord", "name email phone profilePic");
+    if (!house) return res.status(404).json({ success: false, error: "House not found" });
+
+    res.status(200).json({ success: true, house });
+  } catch (err) {
+    console.error("Get house by ID error:", err);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
 
 export default router;

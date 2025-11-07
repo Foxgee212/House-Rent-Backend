@@ -165,14 +165,13 @@ export const getDashboardStats = async (req, res) => {
    ✅ VERIFICATION MANAGEMENT
    ============================== */
 
-// 📋 Get all landlord verifications
+// 📋 Get all verifications (landlords + agents)
 export const getAllVerifications = async (req, res) => {
   try {
     const users = await User.find({
-      role: "landlord",
       verification: { $exists: true },
     })
-      .select("name email phone verification")
+      .select("name email phone role verification")
       .sort({ createdAt: -1 });
 
     res.status(200).json(users || []);
@@ -186,7 +185,7 @@ export const getAllVerifications = async (req, res) => {
 export const getVerificationById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select(
-      "name email phone verification"
+      "name email phone role verification"
     );
     if (!user) return res.status(404).json({ message: "User not found" });
     res.status(200).json(user);
