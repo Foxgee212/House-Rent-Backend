@@ -14,7 +14,8 @@ import otpRoute from "./routes/Otp.js";
 // ===== Route Imports =====
 import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
-import houseRoutes from "./routes/houses.js";
+import rentalRoutes from "./routes/rentals.js"
+import salesRoutes from "./routes/sales.js"
 import profileRoutes from "./routes/profile.js";
 import verificationRoutes from "./routes/verification.js";
 import adminVerificationRoutes from "./routes/adminVerification.js";
@@ -108,7 +109,8 @@ loadFaceModels().catch((err) => {
 
 // ===== API Routes =====
 app.use("/auth", authRoutes);
-app.use("/houses", houseRoutes);
+app.use("/rentals", rentalRoutes);
+app.use("/sales", salesRoutes)
 app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
 app.use("/verification", verificationRoutes);

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+
 const houseSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -17,7 +18,7 @@ const houseSchema = new mongoose.Schema({
     type: String,
   },
   images: {
-    type: [String], // Cloudinary or upload URL
+    type: [String],
     required: true,
   },
   landlord: {
@@ -36,16 +37,21 @@ const houseSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
-    default: "pending", 
+    default: "pending",
   },
   deleted: {
     type: Boolean,
-    default: false
+    default: false,
+  },
 
-  }
-
-
+  // 🆕 NEW FIELD
+  listingType: {
+    type: String,
+    enum: ["sale", "rent"],
+    required: true,
+  },
 }, { timestamps: true });
+
 
 const House = mongoose.model("House", houseSchema);
 export default House;
