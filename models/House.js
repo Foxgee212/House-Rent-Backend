@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-
 const houseSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -44,14 +43,22 @@ const houseSchema = new mongoose.Schema({
     default: false,
   },
 
-  // 🆕 NEW FIELD
+  // 🏠 PROPERTY DETAILS
+  rooms: { type: Number, default: 0 },
+  baths: { type: Number, default: 0 },
+  toilets: { type: Number, default: 0 },
+  parking: { type: Number, default: 0 },
+  area: { type: Number, default: 0 }, // in sqft or sqm
+  period: { type: String }, // e.g., "month" for rent or "year"
+
+  // 📅 OPTIONAL METADATA
+  added: { type: String }, // e.g., "2 days ago" (you can compute this dynamically)
   listingType: {
     type: String,
     enum: ["sale", "rent"],
     required: true,
   },
 }, { timestamps: true });
-
 
 const House = mongoose.model("House", houseSchema);
 export default House;
