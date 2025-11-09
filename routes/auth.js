@@ -20,14 +20,38 @@ router.post("/register", async (req, res) => {
     if (!allowedRoles.includes(role))
       return res.status(400).json({ msg: "Invalid user role." });
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
+    // ✅ Check for an existing verified user
+    const verifiedUser = await User.findOne({ email, emailVerified: true });
+    if (verifiedUser)
       return res.status(400).json({ msg: "User already exists." });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // ✅ Check if an unverified user exists
+    let user = await User.findOne({ email, emailVerified: false });
     const otp = generateOTP(6);
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    const newUser = await User.create({
+    if (user) {
+      // Resend OTP for unverified user
+      user.name = name; // optional: update name if changed
+      user.password = await bcrypt.hash(password, 10); // update password
+      user.role = role;
+      user.location = location;
+      user.bio = bio;
+      user.phone = phone;
+      user.emailVerificationOTP = otp;
+      user.emailVerificationExpires = otpExpires;
+      await sendOTP(email, otp, "Email Verification OTP");
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        msg: "An OTP has been resent to your email. Please verify to complete registration.",
+      });
+    }
+
+    // Create new user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user = await User.create({
       name,
       email,
       password: hashedPassword,
@@ -36,11 +60,11 @@ router.post("/register", async (req, res) => {
       bio,
       phone,
       emailVerificationOTP: otp,
-      emailVerificationExpires: Date.now() + 10 * 60 * 1000, // 10 min
+      emailVerificationExpires: otpExpires,
       emailVerified: false,
     });
 
-    await sendOTP(email, otp);
+    await sendOTP(email, otp, "Email Verification OTP");
 
     return res.status(201).json({
       success: true,
@@ -53,33 +77,26 @@ router.post("/register", async (req, res) => {
 });
 
 /* ============================================================
-   📍 RESEND EMAIL VERIFICATION OR PASSWORD RESET OTP
+   📍 RESEND EMAIL VERIFICATION OTP
 ============================================================ */
 router.post("/resend-otp", async (req, res) => {
   try {
-    const { email, context } = req.body;
+    const { email } = req.body;
     if (!email) return res.status(400).json({ msg: "Email is required." });
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ msg: "User not found." });
 
+    if (user.emailVerified)
+      return res.status(400).json({ msg: "Email already verified. Please log in." });
+
+    // Generate new OTP
     const otp = generateOTP(6);
-    const expires = Date.now() + 10 * 60 * 1000; // 10 min
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    user.emailVerificationOTP = otp;
+    user.emailVerificationExpires = otpExpires;
 
-    if (context === "forgot") {
-      user.resetPasswordOTP = otp;
-      user.resetPasswordExpires = expires;
-      user.resetPasswordVerified = false;
-      await sendOTP(email, otp, "Password Reset OTP");
-    } else {
-      if (user.emailVerified)
-        return res.status(400).json({ msg: "Email already verified. Please log in." });
-
-      user.emailVerificationOTP = otp;
-      user.emailVerificationExpires = expires;
-      await sendOTP(email, otp, "Email Verification OTP");
-    }
-
+    await sendOTP(email, otp, "Email Verification OTP");
     await user.save();
 
     return res.status(200).json({
