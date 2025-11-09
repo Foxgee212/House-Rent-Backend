@@ -114,7 +114,7 @@ app.use("/sales", salesRoutes)
 app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
 app.use("/verification", verificationRoutes);
-app.use("/admin", adminVerificationRoutes);
+app.use("/adminVer", adminVerificationRoutes);
 app.use("/api", otpRoute);
 
 // ===== Global 404 =====

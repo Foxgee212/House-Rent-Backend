@@ -1,11 +1,9 @@
 import User from "../models/User.js";
 import House from "../models/House.js";
 
-/* ==============================
+/* ============================================================
    👥 USER MANAGEMENT
-   ============================== */
-
-// 🧾 Get all users
+============================================================ */
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password").sort({ createdAt: -1 });
@@ -16,7 +14,6 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// 🗑️ Delete a user
 export const deleteUser = async (req, res) => {
   try {
     const deleted = await User.findByIdAndDelete(req.params.id);
@@ -28,16 +25,25 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-/* ==============================
+/* ============================================================
    🏘️ HOUSE MANAGEMENT
-   ============================== */
+============================================================ */
+
+// ✅ Helper function to fetch houses by status + listingType
+const fetchHousesByType = async (status, listingType) => {
+  const query = {};
+  if (status) query.status = status;
+  if (listingType) query.listingType = listingType;
+
+  return await House.find(query)
+    .populate("landlord", "name email phone profilePic")
+    .sort({ createdAt: -1 });
+};
 
 // 📋 Get all houses
 export const getAllHouses = async (req, res) => {
   try {
-    const houses = await House.find()
-      .populate("landlord", "name email phone profilePic")
-      .sort({ createdAt: -1 });
+    const houses = await fetchHousesByType();
     res.status(200).json(houses);
   } catch (error) {
     console.error("❌ Error fetching houses:", error);
@@ -45,27 +51,47 @@ export const getAllHouses = async (req, res) => {
   }
 };
 
-// ⏳ Get all pending houses
-export const getPendingHouses = async (req, res) => {
+// ⏳ Get all pending rent houses
+export const getPendingRentHouses = async (req, res) => {
   try {
-    const pending = await House.find({ status: "pending" })
-      .populate("landlord", "name email");
-    res.status(200).json(pending);
+    const houses = await fetchHousesByType("pending", "rent");
+    res.status(200).json(houses);
   } catch (error) {
-    console.error("❌ Error fetching pending houses:", error);
-    res.status(500).json({ message: "Server error fetching pending houses" });
+    console.error("❌ Error fetching pending rent houses:", error);
+    res.status(500).json({ message: "Server error fetching pending rent houses" });
   }
 };
 
-// ✅ Get all approved houses
-export const getApprovedHouses = async (req, res) => {
+// ⏳ Get all pending sale houses
+export const getPendingSaleHouses = async (req, res) => {
   try {
-    const approved = await House.find({ status: "approved" })
-      .populate("landlord", "name email phone profilePic");
-    res.status(200).json(approved);
+    const houses = await fetchHousesByType("pending", "sale");
+    res.status(200).json(houses);
   } catch (error) {
-    console.error("❌ Error fetching approved houses:", error);
-    res.status(500).json({ message: "Server error fetching approved houses" });
+    console.error("❌ Error fetching pending sale houses:", error);
+    res.status(500).json({ message: "Server error fetching pending sale houses" });
+  }
+};
+
+// ✅ Get approved rent houses
+export const getApprovedRentHouses = async (req, res) => {
+  try {
+    const houses = await fetchHousesByType("approved", "rent");
+    res.status(200).json(houses);
+  } catch (error) {
+    console.error("❌ Error fetching approved rent houses:", error);
+    res.status(500).json({ message: "Server error fetching approved rent houses" });
+  }
+};
+
+// ✅ Get approved sale houses
+export const getApprovedSaleHouses = async (req, res) => {
+  try {
+    const houses = await fetchHousesByType("approved", "sale");
+    res.status(200).json(houses);
+  } catch (error) {
+    console.error("❌ Error fetching approved sale houses:", error);
+    res.status(500).json({ message: "Server error fetching approved sale houses" });
   }
 };
 
@@ -111,7 +137,7 @@ export const rejectHouse = async (req, res) => {
   }
 };
 
-// 🗑️ Permanently delete a house
+// 🗑️ Delete a house
 export const deleteHouse = async (req, res) => {
   try {
     const deleted = await House.findByIdAndDelete(req.params.id);
@@ -123,9 +149,9 @@ export const deleteHouse = async (req, res) => {
   }
 };
 
-/* ==============================
+/* ============================================================
    📊 DASHBOARD STATS
-   ============================== */
+============================================================ */
 export const getDashboardStats = async (req, res) => {
   try {
     const [
@@ -161,19 +187,14 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
-/* ==============================
+/* ============================================================
    ✅ VERIFICATION MANAGEMENT
-   ============================== */
-
-// 📋 Get all verifications (landlords + agents)
+============================================================ */
 export const getAllVerifications = async (req, res) => {
   try {
-    const users = await User.find({
-      verification: { $exists: true },
-    })
+    const users = await User.find({ verification: { $exists: true } })
       .select("name email phone role verification")
       .sort({ createdAt: -1 });
-
     res.status(200).json(users || []);
   } catch (error) {
     console.error("❌ Error fetching verifications:", error);
@@ -181,7 +202,6 @@ export const getAllVerifications = async (req, res) => {
   }
 };
 
-// 👁️ Get verification by user ID
 export const getVerificationById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select(
@@ -195,7 +215,6 @@ export const getVerificationById = async (req, res) => {
   }
 };
 
-// ✅ Approve verification
 export const approveVerification = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -211,14 +230,13 @@ export const approveVerification = async (req, res) => {
   }
 };
 
-// ❌ Reject verification
 export const rejectVerification = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     user.verification.status = "rejected";
-    user.verification.idData = null; // optional: clear uploaded docs
+    user.verification.idData = null;
     await user.save();
 
     res.status(200).json({ message: "Verification rejected successfully" });

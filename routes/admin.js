@@ -2,66 +2,77 @@ import express from "express";
 import auth from "../middleware/auth.js";
 import { verifyAdmin } from "../middleware/verifyAdmin.js";
 import {
+  // 👥 User management
   getAllUsers,
   deleteUser,
+
+  // 🏘️ House management
   getAllHouses,
+  getPendingRentHouses,
+  getPendingSaleHouses,
+  getApprovedRentHouses,
+  getApprovedSaleHouses,
   approveHouse,
   deleteHouse,
+
+  // 📊 Dashboard
   getDashboardStats,
-  getPendingHouses,
-  getApprovedHouses,
-  getAllVerifications,     // 🆕 added
-  getVerificationById,   // 🆕 added
-  approveVerification,        // 🆕 added
-  rejectVerification          // 🆕 added
+
+  // 🧾 Verification management
+  getAllVerifications,
+  getVerificationById,
+  approveVerification,
+  rejectVerification,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
 
 /* ==============================
-   ✅ ADMIN DASHBOARD ROUTES
-   ============================== */
+   📊 ADMIN DASHBOARD
+============================== */
 
-// 📊 Dashboard stats
+// Dashboard stats
 router.get("/stats", auth, verifyAdmin, getDashboardStats);
 
 /* ==============================
-   🏠 HOUSE MANAGEMENT ROUTES
-   ============================== */
+   🏘️ HOUSE MANAGEMENT
+============================== */
 
-// 🏘️ Get all houses
+// 🏠 All houses
 router.get("/houses", auth, verifyAdmin, getAllHouses);
 
-// 🕒 Get pending houses
-router.get("/pending", auth, verifyAdmin, getPendingHouses);
+// ⏳ Pending Houses (Separated by listingType)
+router.get("/houses/rent/pending", auth, verifyAdmin, getPendingRentHouses);
+router.get("/houses/sale/pending", auth, verifyAdmin, getPendingSaleHouses);
 
-// ✅ Get approved houses
-router.get("/approved", auth, verifyAdmin, getApprovedHouses);
+// ✅ Approved Houses (Separated by listingType)
+router.get("/houses/rent/approved", auth, verifyAdmin, getApprovedRentHouses);
+router.get("/houses/sale/approved", auth, verifyAdmin, getApprovedSaleHouses);
 
-// ✅ Approve a house
+// 🟢 Approve a house
 router.patch("/houses/:id/approve", auth, verifyAdmin, approveHouse);
 
 // 🗑️ Delete a house
 router.delete("/houses/:id", auth, verifyAdmin, deleteHouse);
 
 /* ==============================
-   👥 USER MANAGEMENT ROUTES
-   ============================== */
+   👥 USER MANAGEMENT
+============================== */
 
-// 👨‍💻 Get all users
+// 👨‍💻 All users
 router.get("/users", auth, verifyAdmin, getAllUsers);
 
-// ❌ Delete a user
+// ❌ Delete user
 router.delete("/users/:id", auth, verifyAdmin, deleteUser);
 
 /* ==============================
-   🧾 VERIFICATION MANAGEMENT ROUTES
-   ============================== */
+   ✅ VERIFICATION MANAGEMENT
+============================== */
 
-// 🔍 Get all pending verifications
+// 🔍 All verifications
 router.get("/verifications", auth, verifyAdmin, getAllVerifications);
 
-// 👁️ View single verification details
+// 👁️ Single verification details
 router.get("/verifications/:id", auth, verifyAdmin, getVerificationById);
 
 // ✅ Approve verification
