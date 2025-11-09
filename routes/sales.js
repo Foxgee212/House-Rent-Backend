@@ -8,6 +8,7 @@ import {
   updateSaleHouse,
   getApprovedSales,
   getMySales,
+  updateSaleAvailability,
 } from "../controllers/houseController.js";
 
 const router = express.Router();
@@ -27,6 +28,8 @@ router.get("/approved", getApprovedSales);
 
 // 🟢 Get logged-in user's sale listings (Private)
 router.get("/my", auth, ensureVerified, getMySales);
+// 🟢 Update rental availability (Landlord only)
+router.patch("/:id/availability", auth, ensureVerified, updateSaleAvailability);
 
 // 🟢 Get single sale house by ID (Public)
 router.get("/:id", async (req, res) => {

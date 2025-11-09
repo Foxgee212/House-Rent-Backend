@@ -16,6 +16,7 @@ import {
   createSaleHouse,
   updateSaleHouse,
   getMySales,
+  updateSaleAvailability,
 
   // SHARED
   getHouseById,
@@ -113,6 +114,14 @@ router.get("/sales/approved", getApprovedSales);
 
 // Get logged-in agent’s own sales
 router.get("/sales/my", auth, ensureVerified, getMySales);
+
+// Update rental availability
+router.patch(
+  "/sales/:id/availability",
+  auth,
+  ensureVerified,
+  updateSaleAvailability
+);
 
 
 // ==============================

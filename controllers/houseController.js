@@ -269,3 +269,31 @@ export const updateHouse = async (req, res) => {
   }
 };
 
+// Update rental house availability (Landlord only)
+export const updateSaleAvailability = async (req, res) => {
+  const { id } = req.params;
+  const { available } = req.body;
+
+  try {
+    const house = await House.findById(id);
+    if (!house) return res.status(404).json({ success: false, msg: "House not found" });
+
+    if (house.agent.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, msg: "Unauthorized" });
+    }
+
+    house.available = available;
+    await house.save();
+
+    res.status(200).json({
+      success: true,
+      msg: `House marked as ${available ? "available" : "occupied"}`,
+      house,
+    });
+  } catch (err) {
+    console.error("Update availability error:", err);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+
