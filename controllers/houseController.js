@@ -138,6 +138,7 @@ export const getApprovedSales = async (req, res) => {
 // Create a new sale house (Landlord only)
 export const createSaleHouse = async (req, res) => {
   try {
+    console.log("Recieved files:", req.files);
     const { title, location, price, description, negotiable, rooms, baths, toilets, parking } = req.body;
 
     if (!title || !location || !price || !description) {

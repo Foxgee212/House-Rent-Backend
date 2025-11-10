@@ -36,7 +36,7 @@ router.post(
   "/rentals",
   auth,
   ensureVerified,
-  upload.array("images", 5),
+  upload.array("images", 20),
   createHouse
 );
 
@@ -96,7 +96,7 @@ router.post(
   "/sales",
   auth,
   ensureVerified,
-  upload.array("images", 5),
+  upload.array("images", 20),
   createSaleHouse
 );
 
@@ -105,7 +105,7 @@ router.put(
   "/sales/:id",
   auth,
   ensureVerified,
-  upload.array("images", 5),
+  upload.array("images", 20),
   updateSaleHouse
 );
 
