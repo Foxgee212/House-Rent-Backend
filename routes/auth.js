@@ -20,28 +20,25 @@ router.post("/register", async (req, res) => {
     if (!allowedRoles.includes(role))
       return res.status(400).json({ msg: "Invalid user role." });
 
-    // ✅ Check for an existing verified user
     const verifiedUser = await User.findOne({ email, emailVerified: true });
-    if (verifiedUser)
-      return res.status(400).json({ msg: "User already exists." });
+    if (verifiedUser) return res.status(400).json({ msg: "User already exists." });
 
-    // ✅ Check if an unverified user exists
     let user = await User.findOne({ email, emailVerified: false });
     const otp = generateOTP(6);
-    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const otpExpires = Date.now() + 10 * 60 * 1000;
 
     if (user) {
-      // Resend OTP for unverified user
-      user.name = name; // optional: update name if changed
-      user.password = await bcrypt.hash(password, 10); // update password
+      user.name = name;
+      user.password = await bcrypt.hash(password, 10);
       user.role = role;
       user.location = location;
       user.bio = bio;
       user.phone = phone;
       user.emailVerificationOTP = otp;
       user.emailVerificationExpires = otpExpires;
+
+      await user.save();            // Save before sending OTP
       await sendOTP(email, otp, "Email Verification OTP");
-      await user.save();
 
       return res.status(200).json({
         success: true,
@@ -49,7 +46,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Create new user
     const hashedPassword = await bcrypt.hash(password, 10);
     user = await User.create({
       name,
@@ -81,27 +77,41 @@ router.post("/register", async (req, res) => {
 ============================================================ */
 router.post("/resend-otp", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, context } = req.body;
     if (!email) return res.status(400).json({ msg: "Email is required." });
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ msg: "User not found." });
 
+    const otp = generateOTP(6);
+    const otpExpires = Date.now() + 10 * 60 * 1000;
+
+    if (context === "forgot") {
+      user.resetPasswordOTP = otp;
+      user.resetPasswordExpires = otpExpires;
+      user.resetPasswordVerified = false;
+
+      await user.save();
+      await sendOTP(email, otp, "Password Reset OTP");
+
+      return res.status(200).json({
+        success: true,
+        msg: "📩 A new password reset OTP has been sent to your email.",
+      });
+    }
+
     if (user.emailVerified)
       return res.status(400).json({ msg: "Email already verified. Please log in." });
 
-    // Generate new OTP
-    const otp = generateOTP(6);
-    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
     user.emailVerificationOTP = otp;
     user.emailVerificationExpires = otpExpires;
 
-    await sendOTP(email, otp, "Email Verification OTP");
     await user.save();
+    await sendOTP(email, otp, "Email Verification OTP");
 
     return res.status(200).json({
       success: true,
-      msg: "📩 A new OTP has been sent to your email.",
+      msg: "📩 A new verification OTP has been sent to your email.",
     });
   } catch (err) {
     console.error("❌ Resend OTP error:", err);
@@ -110,10 +120,11 @@ router.post("/resend-otp", async (req, res) => {
 });
 
 /* ============================================================
-   📍 VERIFY OTP (signup or forgot password)s
+   📍 VERIFY OTP (signup or forgot password)
 ============================================================ */
 router.post("/verify-otp", async (req, res) => {
   try {
+    console.log("🟢 Verify OTP Request Body:", req.body);
     const { email, otp, context } = req.body;
     if (!email || !otp)
       return res.status(400).json({ msg: "Email and OTP are required." });
@@ -126,9 +137,7 @@ router.post("/verify-otp", async (req, res) => {
         return res.status(400).json({ msg: "Invalid or expired OTP." });
 
       user.resetPasswordVerified = true;
-      user.resetPasswordOTP = undefined;
-      user.resetPasswordExpires = undefined;
-      await user.save();
+      await user.save(); // OTP will be cleared after password reset
 
       return res.status(200).json({
         success: true,
@@ -167,7 +176,7 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 /* ============================================================
-   📍 LOGIN USER (block if email not verified)
+   📍 LOGIN USER
 ============================================================ */
 router.post("/login", async (req, res) => {
   try {
@@ -215,8 +224,8 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordOTP = otp;
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
     user.resetPasswordVerified = false;
-    await user.save();
 
+    await user.save();
     await sendOTP(email, otp, "Password Reset OTP");
 
     return res.status(200).json({
@@ -236,29 +245,18 @@ router.post("/reset-password", async (req, res) => {
   try {
     const { email, newPassword } = req.body;
 
-    // 🔸 Basic validation
-    if (!email || !newPassword) {
-      return res.status(400).json({
-        msg: "Email and new password are required.",
-      });
-    }
+    if (!email || !newPassword)
+      return res.status(400).json({ msg: "Email and new password are required." });
 
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ msg: "User not found." });
+    if (!user) return res.status(404).json({ msg: "User not found." });
 
-    // ✅ Ensure OTP was verified first
-    if (!user.resetPasswordVerified) {
-      return res.status(400).json({
-        msg: "Please verify your OTP before resetting your password.",
-      });
-    }
+    if (!user.resetPasswordVerified)
+      return res.status(400).json({ msg: "Please verify your OTP before resetting your password." });
 
-    // 🔒 Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
 
-    // 🧹 Clear reset-related fields after success
     user.resetPasswordVerified = false;
     user.resetPasswordOTP = undefined;
     user.resetPasswordExpires = undefined;
@@ -271,16 +269,12 @@ router.post("/reset-password", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Reset Password error:", err);
-    return res.status(500).json({
-      msg: "Server error.",
-      error: err.message,
-    });
+    return res.status(500).json({ msg: "Server error.", error: err.message });
   }
 });
 
-
 /* ============================================================
-   📍 GET CURRENT USER (via JWT)
+   📍 GET CURRENT USER
 ============================================================ */
 router.get("/me", async (req, res) => {
   try {

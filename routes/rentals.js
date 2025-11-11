@@ -48,6 +48,8 @@ router.get("/approved", async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    console.log("Retrieved approved rental houses:", houses);
+
     res.status(200).json({
       success: true,
       page,
