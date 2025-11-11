@@ -24,7 +24,7 @@ router.post("/", auth, ensureVerified, upload.array("images", 5), createHouse);
 // 🟢 Get all rental houses (Public)
 router.get("/", getHouses);
 
-// 🟢 Get all approved rental houses (Public)
+
 // 🟢 Get all approved rental houses (Public) with pagination
 router.get("/approved", async (req, res) => {
   try {
@@ -61,7 +61,6 @@ router.get("/approved", async (req, res) => {
   }
 });
 
-// 🟢 Get logged-in landlord's rentals (Private)
 // 🟢 Get logged-in landlord's rentals (Private) with pagination
 router.get("/my", auth, ensureVerified, async (req, res) => {
   try {
