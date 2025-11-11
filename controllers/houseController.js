@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 
 // Create a new rental house (Landlord only)
 export const createHouse = async (req, res) => {
-  const { title, location, price, description, negotiable, rooms, baths, toilets, parking } = req.body;
+  const { title, location, price, description, negotiable, rooms, baths, toilets, parking, period } = req.body;
 
   if (!title || !location || !price || !description) {
     return res.status(400).json({ success: false, msg: "All fields are required" });
@@ -38,6 +38,7 @@ export const createHouse = async (req, res) => {
       baths: Number(baths) || 0,
       toilets: Number(toilets) || 0,
       parking: Number(parking) || 0,
+      period: period || "per year",
     });
 
     res.status(201).json({
