@@ -47,9 +47,6 @@ router.get("/approved", async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-
-    console.log("Retrieved approved rental houses:", houses);
-
     res.status(200).json({
       success: true,
       page,
