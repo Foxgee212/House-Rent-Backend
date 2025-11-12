@@ -24,8 +24,8 @@ export function generateOTP(length = 6) {
 export async function sendOTP(email, otp, type = "verification") {
   try {
     const subject = type === "verification"
-      ? "✅ Verify Your HouseRent Account"
-      : "🔐 Your HouseRent Password Reset Code";
+      ? "✅ Verify Your Naijahome Account"
+      : "🔐 Your Naijahome Password Reset Code";
 
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -38,12 +38,12 @@ export async function sendOTP(email, otp, type = "verification") {
         <p>This code will expire in <strong>10 minutes</strong>.</p>
         <p>If you did not request this, ignore this email.</p>
         <br />
-        <p>— The HouseRent Team 🏠</p>
+        <p>— The Naijahome Team 🏠</p>
       </div>
     `;
 
     await resend.emails.send({
-      from: "HouseRent <ibrahymabdullahi@naijahome.ng>", // must be verified
+      from: "Naijahome <ibrahymabdullahi@naijahome.ng>", // must be verified
       to: email,
       subject,
       html,
