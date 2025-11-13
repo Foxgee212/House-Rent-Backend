@@ -19,12 +19,12 @@ const router = express.Router();
 // ==============================
 
 // 🟢 Create a new sale listing (Landlord/Agent)
-router.post("/", auth, ensureVerified, upload.array("images", 5), (req, res) =>
+router.post("/", auth, ensureVerified, upload.array("images", 10), (req, res) =>
   createSaleHouse(req, res)
 );
 
 // 🟢 Update a sale listing (Landlord/Agent)
-router.put("/:id", auth, ensureVerified, upload.array("images", 5), (req, res) =>
+router.put("/:id", auth, ensureVerified, upload.array("images", 10), (req, res) =>
   updateSaleHouse(req, res)
 );
 

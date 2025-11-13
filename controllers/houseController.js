@@ -105,7 +105,29 @@ export const updateHouseGeneric = async (req, res, listingType) => {
     if (house.landlord.toString() !== req.user.id) return res.status(403).json({ success: false, error: "Not authorized" });
 
     updateHouseFields(house, req.body);
-    processHouseImages(house, req.files, primaryImageIndex);
+
+// Handle image updates
+const keptImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : house.images;
+
+// Replace old image array with the kept ones
+house.images = Array.isArray(keptImages) ? keptImages : [];
+
+// Add newly uploaded images (if any)
+if (req.files?.length) {
+  const newImages = req.files.map((file) => file.path);
+  house.images.push(...newImages);
+}
+
+// Handle primary image logic
+if (req.body.primaryImageIndex !== undefined) {
+  const index = Number(req.body.primaryImageIndex);
+  if (index >= 0 && index < house.images.length) {
+    house.primaryImage = house.images[index];
+  }
+} else if (!house.primaryImage && house.images.length) {
+  house.primaryImage = house.images[0];
+}
+
 
     await house.save();
     return successResponse(res, `${listingType === "rent" ? "Rental" : "Sale"} house updated successfully`, { house });

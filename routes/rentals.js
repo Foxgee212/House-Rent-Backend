@@ -14,7 +14,7 @@ const router = express.Router();
 // ==============================
 
 // 🟢 Create a new rental house (Landlord only)
-router.post("/", auth, ensureVerified, upload.array("images", 5), (req, res) => createHouseGeneric(req, res, "rent"));
+router.post("/", auth, ensureVerified, upload.array("images", 10), (req, res) => createHouseGeneric(req, res, "rent"));
 
 // 🟢 Get all rental houses (Public)
 router.get("/", getHouses);
@@ -120,6 +120,6 @@ router.get("/:id", async (req, res) => {
 });
 
 // 🟢 Update a rental house (Landlord only)
-router.put("/:id", auth, ensureVerified, upload.array("images", 5), (req, res) => updateHouseGeneric(req, res, "rent"));
+router.put("/:id", auth, ensureVerified, upload.array("images", 10), (req, res) => updateHouseGeneric(req, res, "rent"));
 
 export default router;
