@@ -20,6 +20,9 @@ const houseSchema = new mongoose.Schema({
     type: [String],
     required: true,
   },
+  primaryImage: {
+    type: String, // ✅ The main image for display
+  },
   landlord: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -52,7 +55,7 @@ const houseSchema = new mongoose.Schema({
   period: { type: String }, // e.g., "month" for rent or "year"
 
   // 📅 OPTIONAL METADATA
-  added: { type: String }, // e.g., "2 days ago" (you can compute this dynamically)
+  added: { type: String }, // e.g., "2 days ago" (can be computed dynamically)
   listingType: {
     type: String,
     enum: ["sale", "rent"],
@@ -61,4 +64,5 @@ const houseSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const House = mongoose.model("House", houseSchema);
+
 export default House;

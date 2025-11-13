@@ -3,6 +3,7 @@ import auth from "../middleware/auth.js";
 import ensureVerified from "../middleware/ensureVerified.js";
 import upload from "../middleware/upload.js";
 import mongoose from "mongoose";
+import House from "../models/House.js";
 import {
   createSaleHouse,
   updateSaleHouse,
@@ -17,19 +18,26 @@ const router = express.Router();
 // SALES ROUTES
 // ==============================
 
-// 🟢 Create a new sale listing (Agent/Landlord)
-router.post("/", auth, ensureVerified, upload.array("images", 5), createSaleHouse);
+// 🟢 Create a new sale listing (Landlord/Agent)
+router.post("/", auth, ensureVerified, upload.array("images", 5), (req, res) =>
+  createSaleHouse(req, res)
+);
 
-// 🟢 Update a sale listing (Agent/Landlord)
-router.put("/:id", auth, ensureVerified, upload.array("images", 5), updateSaleHouse);
+// 🟢 Update a sale listing (Landlord/Agent)
+router.put("/:id", auth, ensureVerified, upload.array("images", 5), (req, res) =>
+  updateSaleHouse(req, res)
+);
 
-// 🟢 Get all approved sale listings (Public)
-router.get("/approved", getApprovedSales);
+// 🟢 Get all approved sale listings (Public) with pagination
+router.get("/approved", (req, res) => getApprovedSales(req, res));
 
-// 🟢 Get logged-in user's sale listings (Private)
-router.get("/my", auth, ensureVerified, getMySales);
-// 🟢 Update rental availability (Landlord only)
-router.patch("/:id/availability", auth, ensureVerified, updateSaleAvailability);
+// 🟢 Get logged-in user's sale listings (Private) with pagination
+router.get("/my", auth, ensureVerified, (req, res) => getMySales(req, res));
+
+// 🟢 Update sale availability (Landlord only)
+router.patch("/:id/availability", auth, ensureVerified, (req, res) =>
+  updateSaleAvailability(req, res)
+);
 
 // 🟢 Get single sale house by ID (Public)
 router.get("/:id", async (req, res) => {

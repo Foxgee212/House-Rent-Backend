@@ -4,12 +4,7 @@ import ensureVerified from "../middleware/ensureVerified.js";
 import upload from "../middleware/upload.js";
 import mongoose from "mongoose";
 import House from "../models/House.js";
-import {
-  createHouse,
-  getHouses,
-  updateAvailability,
-    updateHouse,
-} from "../controllers/houseController.js";
+import { createHouseGeneric, updateHouseGeneric, getHouses, updateAvailability } from "../controllers/houseController.js";
 import { deleteHouse } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -19,17 +14,16 @@ const router = express.Router();
 // ==============================
 
 // 🟢 Create a new rental house (Landlord only)
-router.post("/", auth, ensureVerified, upload.array("images", 5), createHouse);
+router.post("/", auth, ensureVerified, upload.array("images", 5), (req, res) => createHouseGeneric(req, res, "rent"));
 
 // 🟢 Get all rental houses (Public)
 router.get("/", getHouses);
-
 
 // 🟢 Get all approved rental houses (Public) with pagination
 router.get("/approved", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 9; // e.g., 9 houses per page
+    const limit = parseInt(req.query.limit) || 9;
     const skip = (page - 1) * limit;
 
     const total = await House.countDocuments({
@@ -47,6 +41,7 @@ router.get("/approved", async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+
     res.status(200).json({
       success: true,
       page,
@@ -95,7 +90,6 @@ router.get("/my", auth, ensureVerified, async (req, res) => {
   }
 });
 
-
 // 🟢 Update rental availability (Landlord only)
 router.patch("/:id/availability", auth, ensureVerified, updateAvailability);
 
@@ -124,9 +118,8 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
-// Update a rental house (Landlord only)
-router.put("/:id", auth, ensureVerified, upload.array("images", 5), updateHouse);
 
-
+// 🟢 Update a rental house (Landlord only)
+router.put("/:id", auth, ensureVerified, upload.array("images", 5), (req, res) => updateHouseGeneric(req, res, "rent"));
 
 export default router;
