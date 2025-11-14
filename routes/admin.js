@@ -3,8 +3,11 @@ import auth from "../middleware/auth.js";
 import { verifyAdmin } from "../middleware/verifyAdmin.js";
 import {
   // 👥 User management
-  getAllUsers,
-  deleteUser,
+   getAllUsers,
+   deleteUser,
+   userslandlords,
+   userstenants,
+   agentsusers,
 
   // 🏘️ House management
   getAllHouses,
@@ -64,6 +67,12 @@ router.get("/users", auth, verifyAdmin, getAllUsers);
 
 // ❌ Delete user
 router.delete("/users/:id", auth, verifyAdmin, deleteUser);
+// 🏠 Landlord users
+router.get("/users/landlords", auth, verifyAdmin, userslandlords);
+// 🏘️ Tenant users
+router.get("/users/tenants", auth, verifyAdmin, userstenants);
+// 🧑‍💼 Agent users
+router.get("/users/agents", auth, verifyAdmin, agentsusers);
 
 /* ==============================
    ✅ VERIFICATION MANAGEMENT

@@ -24,6 +24,35 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ message: "Server error deleting user" });
   }
 };
+export const userslandlords = async (req, res) => {
+  try {
+    const landlords = await User.find({ role: "landlord" }).select("-password").sort({ createdAt: -1 });
+    res.status(200).json(landlords);
+  } catch (error) {
+    console.error("❌ Error fetching landlords:", error);
+    res.status(500).json({ message: "Server error fetching landlords" });
+  }
+};
+
+export const userstenants = async (req, res) => {
+  try {
+    const tenants = await User.find({ role: "tenant" }).select("-password").sort({ createdAt: -1 });
+    res.status(200).json(tenants);
+  } catch (error) { 
+    console.error("❌ Error fetching tenants:", error);
+    res.status(500).json({ message: "Server error fetching tenants" });
+  }
+};
+
+export const agentsusers = async (req, res) => {
+  try {
+    const agents = await User.find({ role: "agent" }).select("-password").sort({ createdAt: -1 });
+    res.status(200).json(agents);
+  } catch (error) {
+    console.error("❌ Error fetching agents:", error);
+    res.status(500).json({ message: "Server error fetching agents" });
+  }
+};
 
 /* ============================================================
    🏘️ HOUSE MANAGEMENT
