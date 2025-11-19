@@ -64,7 +64,7 @@ router.get("/my", auth, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const total = await House.countDocuments({
-      landlord: req.user.id,
+      lsandlord: req.user.id,
       listingType: "rent",
       deleted: false,
     });
