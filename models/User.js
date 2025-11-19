@@ -68,6 +68,13 @@ const userSchema = new mongoose.Schema(
     verified: { type: Boolean, default: false }, // True if identity verification passed
     emailVerified: { type: Boolean, default: false }, // True if email OTP verified
 
+    // Posted properties Count for landlords/agents
+    propertiesPostedCount: { type: Number, default: 0, min: 0 },
+
+    // first property posted flag
+    firstPropertyPosted: { type: Boolean, default: false },
+
+
     // Verification
     verification: verificationSchema,
     verificationAttempts: verificationAttemptSchema,

@@ -56,7 +56,8 @@ router.get("/approved", async (req, res) => {
 });
 
 // 🟢 Get logged-in landlord's rentals (Private) with pagination
-router.get("/my", auth, ensureVerified, async (req, res) => {
+// router.get("/my", auth, ensureVerified, async ...)
+router.get("/my", auth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -91,10 +92,10 @@ router.get("/my", auth, ensureVerified, async (req, res) => {
 });
 
 // 🟢 Update rental availability (Landlord only)
-router.patch("/:id/availability", auth, ensureVerified, updateAvailability);
+router.patch("/:id/availability", auth, updateAvailability);
 
 // 🟢 Delete rental (Landlord only)
-router.delete("/:id", auth, ensureVerified, deleteHouse);
+router.delete("/:id", auth, deleteHouse);
 
 // 🟢 Get single rental house by ID (Public)
 router.get("/:id", async (req, res) => {

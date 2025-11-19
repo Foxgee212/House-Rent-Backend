@@ -57,6 +57,20 @@ export const createHouseGeneric = async (req, res, listingType) => {
   if (errorMsg) return res.status(400).json({ success: false, msg: errorMsg });
 
   try {
+        const user = req.user; // Assuming auth middleware already attaches user
+
+    // ===============================
+    // ✅ Check upload permission
+    // ===============================
+    if (!user.firstPropertyPosted && user.emailVerified) {
+      // First property allowed
+    } else if (user.firstPropertyPosted && user.verification?.status !== "verified") {
+      return res.status(403).json({
+        success: false,
+        msg: "You must complete identity verification to upload more properties.",
+      });
+    }
+
     const imageUrls = req.files?.map((file) => file.path) || [];
     if (!imageUrls.length) return res.status(400).json({ success: false, msg: "At least one image is required" });
 
@@ -83,6 +97,14 @@ export const createHouseGeneric = async (req, res, listingType) => {
       parking: Number(parking) || 0,
       period: listingType === "rent" ? period || "per year" : undefined,
     });
+
+    
+    // ===============================
+    // ✅ Update user flags
+    // ===============================
+    if (!user.firstPropertyPosted) user.firstPropertyPosted = true;
+    user.propertiesPostedCount += 1;
+    await user.save();
 
     return successResponse(res, `${listingType === "rent" ? "Rental" : "Sale"} house created successfully`, { house: newHouse }, 201);
   } catch (err) {

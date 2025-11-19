@@ -15,13 +15,25 @@ const houseSchema = new mongoose.Schema({
   },
   description: {
     type: String,
+    default: "",
   },
+
   images: {
     type: [String],
     required: true,
   },
   primaryImage: {
     type: String, // ✅ The main image for display
+  },
+  address: {
+    street: { type: String, default: ""  },
+    city: { type: String, default: ""  },
+    state: { type: String, default: ""  },
+    zipCode: { type: String, default: ""  },
+  },
+  features: {
+    type: Object,
+    default: {},
   },
   landlord: {
     type: mongoose.Schema.Types.ObjectId,
@@ -38,7 +50,7 @@ const houseSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "approved", "rejected"],
+    enum: ["pending", "draft", "approved", "rejected"],
     default: "pending",
   },
   deleted: {
@@ -61,6 +73,8 @@ const houseSchema = new mongoose.Schema({
     enum: ["sale", "rent"],
     required: true,
   },
+  isFeatured: { type: Boolean, default: false },
+  isFlagged: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const House = mongoose.model("House", houseSchema);
