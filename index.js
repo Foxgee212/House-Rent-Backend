@@ -56,6 +56,7 @@ const allowedOrigins = [
   "https://www.naijahome.ng",
   "http://localhost:3000",
   "https://naijahome-next-poyr1i7qc-foxgee212s-projects.vercel.app",
+  "https://naijahome-next.vercel.app",
 ];
 
 const corsOptions = {
