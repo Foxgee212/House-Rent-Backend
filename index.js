@@ -54,7 +54,8 @@ const allowedOrigins = [
   "https://house-rent-frontend-beta.vercel.app",
   "https://naijahome.ng",
   "https://www.naijahome.ng",
-  "http://localhost:3000"
+  "http://localhost:3000",
+  "https://naijahome-next-r8pqvvmng-foxgee212s-projects.vercel.app/",
 ];
 
 const corsOptions = {
